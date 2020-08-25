@@ -1,0 +1,20 @@
+<div fxLayout="column" class="h-100">
+  <mat-toolbar fxLayoutAlign="space-between center" color="accent">
+    <mat-icon class="clickable" matRipple (click)="routeTo('')">arrow_back</mat-icon>
+    <span>JSON BEAUTIFIER</span>
+    <span></span>
+  </mat-toolbar>
+  <div fxLayout="row" fxLayout.lt-md="column" class="h-100">
+    <div fxFlex class="left pane" fxLayout="column">
+      <h1>JSON</h1>
+      <textarea [(ngModel)]="content" fxFlex class="textarea"></textarea>
+    </div>
+    <div fxFlex class="right pane">
+      <h1>Beautified JSON</h1>
+      <code>
+        <pre>{{contentJson | json}}</pre>
+      </code>
+    </div>
+  </div>
+
+</div>

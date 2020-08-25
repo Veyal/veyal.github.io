@@ -5,6 +5,7 @@ import {AppRoutingModule} from './app-routing.module';
 import {AppComponent} from './app.component';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {HomeModule} from './home/home.module';
+import {JsonBeautifierModule} from './json-beautifier/json-beautifier.module';
 
 @NgModule({
   declarations: [
@@ -12,9 +13,10 @@ import {HomeModule} from './home/home.module';
   ],
   imports: [
     BrowserModule,
-    HomeModule,
-    AppRoutingModule,
     BrowserAnimationsModule,
+    HomeModule,
+    JsonBeautifierModule,
+    AppRoutingModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

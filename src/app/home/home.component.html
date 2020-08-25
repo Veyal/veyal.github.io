@@ -1,4 +1,14 @@
-<div fxLayout="row">
-  <span>test 1</span>
-  <span>test 2</span>
+<div fxLayout="column" class="h-100">
+  <mat-toolbar color="primary" fxLayoutAlign="center center">MY OWN TOOLS</mat-toolbar>
+  <div fxFlex class="card-container h-100">
+    <mat-card matRipple class="clickable" (click)="routeTo('json-beautifier')">
+      <mat-card-header>
+        <mat-card-title>JSON Beautifier</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        Beautifiy JSON data
+      </mat-card-content>
+    </mat-card>
+  </div>
+
 </div>
