@@ -1,0 +1,15 @@
+.title{
+  @apply font-semibold text-3xl
+}
+
+.subtitle{
+  @apply font-medium text-2xl
+}
+
+.text-success{
+  @apply text-green-700
+}
+
+.input-file-button{
+  @apply bg-purple-500 px-2 py-1 rounded text-pink-200 font-medium
+}

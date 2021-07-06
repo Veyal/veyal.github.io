@@ -1,0 +1,18 @@
+<div class="flex h-screen w-full flex-col lg:flex-row">
+  <div class="flex flex-col bg-pink-200 flex-1 p-3">
+    <div class="flex flex-row space-x-4">
+      <span class="font-medium text-2xl text-purple-500">JSON</span>
+      <div class="flex-1"></div>
+      <button class="button-primary" (click)="beautifyJson(textArea.value)">Beautify</button>
+    </div>
+    <textarea class="h-full m-3 bg-pink-100 p-2" #textArea></textarea>
+  </div>
+  <div class="flex flex-col bg-purple-200 flex-1 p-3">
+    <div class="flex flex-row space-x-4">
+      <span class="font-medium text-2xl text-pink-500">Beautified</span>
+      <div class="flex-1"></div>
+      <button class="button-secondary" (click)="copyUrl()">Copy URL</button>
+    </div>
+    <textarea class="h-full m-3 bg-purple-100 p-2 overflow-y-auto overflow-x-auto" readonly>{{jsonValue|json}}</textarea>
+  </div>
+</div>
