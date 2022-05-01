@@ -14,7 +14,7 @@ export class EssParserComponent implements OnInit {
   bluebirdData: any[] = [];
   grabData: any[] = [];
 
-  showBluebirdColumn:string[] = ['Name','Booking ID','Vehicle','Trip purpose','Posting date'];
+  showBluebirdColumn:string[] = ['Name','Booking ID','Vehicle','Trip purpose','Picked up at'];
   showGrabColumn:string[] = ['Name of Employee','Booking Code','Trip Description','Date/Time'];
 
   username = '';
@@ -91,7 +91,7 @@ export class EssParserComponent implements OnInit {
   }
 
   excelDateToJSDate(date:number) {
-    return new Date(Math.round((date - 25569)*86400*1000)).toLocaleDateString();
+    return new Date(((date - 25569)*86400*1000)).toISOString().split('T')[0];
   }
 
 

@@ -8,7 +8,7 @@ import { Component, OnInit } from '@angular/core';
 export class PasswordGeneratorComponent implements OnInit {
   password = '';
 
-  characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*~-";
   length = 12;
 
   constructor() {}

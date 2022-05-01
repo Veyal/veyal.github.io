@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ClipboardService } from 'ngx-clipboard';
+import { SnackBarService } from 'src/app/cores/snack-bar/snack-bar.service';
 
 @Component({
   selector: 'app-json-beautifier',
@@ -20,7 +21,8 @@ export class JsonBeautifierComponent implements AfterViewInit {
 
   constructor(
     private activatedRoute: ActivatedRoute,
-    private clipboardService: ClipboardService
+    private clipboardService: ClipboardService,
+    private snackBarService: SnackBarService
   ) {}
 
   ngAfterViewInit() {
@@ -48,5 +50,6 @@ export class JsonBeautifierComponent implements AfterViewInit {
     const param = encodeURIComponent(JSON.stringify(this.jsonValue));
     const url = `${baseUrl}?text=${param}`
     this.clipboardService.copy(url);
+    this.snackBarService.show("URL Copied to clipboard")
   }
 }

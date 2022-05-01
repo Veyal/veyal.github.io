@@ -1,0 +1,20 @@
+
+.snackbar-wrap {
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  @apply px-5 py-2 rounded;
+  transform-origin: center center;
+  transform: translate(-50%, 0%);
+  &.success {
+    @apply bg-blue-400 text-pink-100;
+  }
+  &.danger {
+    background: rgb(173, 35, 0);
+  }
+  .snackbar-text {
+    text-align: center;
+    @apply text-sm font-medium;
+    margin: 0;
+  }
+}

@@ -87,7 +87,7 @@
             <th class="px-2 py-1" *ngFor="let col of showBluebirdColumn">{{col}}</th>
           </tr>
           <tr *ngFor="let data of filteredBluebirdData; let i=index" [ngClass]="(i%2==0)?'bg-pink-100 ':'bg-pink-200'">
-            <td class="px-2 py-1" *ngFor="let col of showBluebirdColumn">{{(col==='Posting date')?excelDateToJSDate(data[col]):data[col]}}</td>
+            <td class="px-2 py-1" *ngFor="let col of showBluebirdColumn">{{(col==='Picked up at')?excelDateToJSDate(data[col]):data[col]}}</td>
           </tr>
         </table>
       </div>

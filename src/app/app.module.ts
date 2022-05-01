@@ -5,6 +5,7 @@ import { ClipboardModule } from 'ngx-clipboard';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { NavBarModule } from './cores/nav-bar/nav-bar.module';
+import { SnackBarModule } from './cores/snack-bar/snack-bar.module';
 import { DashboardModule } from './pages/dashboard/dashboard.module';
 import { EssParserModule } from './pages/ess-parser/ess-parser.module';
 import { JsonBeautifierModule } from './pages/json-beautifier/json-beautifier.module';
@@ -19,6 +20,7 @@ import { SharedModule } from './shared/shared/shared.module';
     SharedModule,
     ClipboardModule,
     NavBarModule,
+    SnackBarModule,
     DashboardModule,
     JsonBeautifierModule,
     PasswordGeneratorModule,
