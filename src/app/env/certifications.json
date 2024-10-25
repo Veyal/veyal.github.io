@@ -1,0 +1,61 @@
+[
+    {
+        "name": "Offensive Security Web Expert",
+        "abbreviation": "OSWE",
+        "organization": "OffSec",
+        "image": "/oswe.svg",
+        "credentialId": "OS-AWAE-9939",
+        "issued": "Aug 2024"
+    },
+    {
+        "name": "GIAC Mobile Device Security Analyst",
+        "abbreviation": "GMOB",
+        "organization": "GIAC Certifications",
+        "image": "/gmob.png",
+        "issued": "Feb 2023",
+        "expires": "Feb 2027"
+    },
+    {
+        "name": "Certified APPSEC Practitioner",
+        "abbreviation": "CAP",
+        "organization": "The SecOps Group",
+        "image": "/cap.png",
+        "credentialId": "6903373",
+        "issued": "Jan 2023"
+    },
+    {
+        "name": "Certified Ethical Hacker Practical",
+        "abbreviation": "CEH Practical",
+        "organization": "EC-Council",
+        "image": "/cehp.svg",
+        "credentialId": "ECC6274013589",
+        "issued": "Jul 2022",
+        "expires": "Jul 2025"
+    },
+    {
+        "name": "Offensive Security Certified Professional",
+        "abbreviation": "OSCP",
+        "organization": "OffSec",
+        "image": "/oscp.svg",
+        "credentialId": "OS-101-52048",
+        "issued": "Oct 2021"
+    },
+    {
+        "name": "CREST Practitioner Security Analyst",
+        "abbreviation": "CPSA",
+        "organization": "CREST Approved",
+        "image": "/cpsa.png",
+        "credentialId": "7162294207",
+        "issued": "Sep 2021",
+        "expired": "Sep 2024"
+    },
+    {
+        "name": "CREST Registered Penetration Tester",
+        "abbreviation": "CRT",
+        "organization": "CREST Approved",
+        "image": "/crt.png",
+        "credentialId": "7162294207",
+        "issued": "Sep 2021",
+        "expired": "Sep 2024"
+    }
+]

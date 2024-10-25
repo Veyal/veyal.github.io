@@ -7,78 +7,23 @@ import { motion, useAnimation } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LockIcon, KeyIcon, CodeIcon } from "lucide-react"
+import tools from '@/app/env/tools.json'
+import certifications from '@/app/env/certifications.json'
+import React from "react"
+
+const iconMap = {
+  LockIcon,
+  KeyIcon,
+  CodeIcon,
+}
+
+function getIconComponent(iconName: string) {
+  return iconMap[iconName as keyof typeof iconMap] || CodeIcon // Default to CodeIcon if not found
+}
 
 export default function HomePage() {
   const certContainerRef = useRef<HTMLDivElement>(null)
   const controls = useAnimation()
-
-  const certifications = [
-    {
-      name: "Offensive Security Web Expert",
-      abbreviation: "OSWE",
-      organization: "OffSec",
-      image: "/oswe.svg",
-      credentialId: "OS-AWAE-9939",
-      issued: "Aug 2024",
-    },
-    {
-      name: "GIAC Mobile Device Security Analyst",
-      abbreviation: "GMOB",
-      organization: "GIAC Certifications",
-      image: "/gmob.png",
-      issued: "Feb 2023",
-      expires: "Feb 2027",
-    },
-    {
-      name: "Certified APPSEC Practitioner",
-      abbreviation: "CAP",
-      organization: "The SecOps Group",
-      image: "/cap.png",
-      credentialId: "6903373",
-      issued: "Jan 2023",
-    },
-    {
-      name: "Certified Ethical Hacker Practical",
-      abbreviation: "CEH Practical",
-      organization: "EC-Council",
-      image: "/cehp.svg",
-      credentialId: "ECC6274013589",
-      issued: "Jul 2022",
-      expires: "Jul 2025",
-    },
-    {
-      name: "Offensive Security Certified Professional",
-      abbreviation: "OSCP",
-      organization: "OffSec",
-      image: "/oscp.svg",
-      credentialId: "OS-101-52048",
-      issued: "Oct 2021",
-    },
-    {
-      name: "CREST Practitioner Security Analyst",
-      abbreviation: "CPSA",
-      organization: "CREST Approved",
-      image: "/cpsa.png",
-      credentialId: "7162294207",
-      issued: "Sep 2021",
-      expired: "Sep 2024",
-    },
-    {
-      name: "CREST Registered Penetration Tester",
-      abbreviation: "CRT",
-      organization: "CREST Approved",
-      image: "/crt.png",
-      credentialId: "7162294207",
-      issued: "Sep 2021",
-      expired: "Sep 2024",
-    }
-  ]
-
-  const tools = [
-    { name: "Encryptor", path: "/encryptor", icon: LockIcon, status: "planned" },
-    { name: "Password Generator", path: "/password-generator", icon: KeyIcon, status: "ready" },
-    { name: "JSON Beautifier", path: "/json-beautifier", icon: CodeIcon, status: "in-development" }
-  ]
 
   useEffect(() => {
     const container = certContainerRef.current
@@ -218,7 +163,9 @@ export default function HomePage() {
                       variant="outline" 
                       className="w-full h-16 sm:h-20 text-lg sm:text-xl justify-start px-6 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-md hover:shadow-lg"
                     >
-                      <tool.icon className="w-6 h-6 sm:w-8 sm:h-8 mr-4 text-pink-600 dark:text-pink-400" />
+                      {React.createElement(getIconComponent(tool.icon), {
+                        className: `w-6 h-6 sm:w-8 sm:h-8 mr-4 text-pink-600 dark:text-pink-400`
+                      })}
                       {tool.name}
                     </Button>
                   </Link>
@@ -230,9 +177,11 @@ export default function HomePage() {
                     }`}
                     disabled
                   >
-                    <tool.icon className={`w-6 h-6 sm:w-8 sm:h-8 mr-4 ${
-                      tool.status === "in-development" ? "text-yellow-600 dark:text-yellow-400" : "text-gray-400 dark:text-gray-500"
-                    }`} />
+                    {React.createElement(getIconComponent(tool.icon), {
+                      className: `w-6 h-6 sm:w-8 sm:h-8 mr-4 ${
+                        tool.status === "in-development" ? "text-yellow-600 dark:text-yellow-400" : "text-gray-400 dark:text-gray-500"
+                      }`
+                    })}
                     {tool.name}
                     <span className="ml-2 text-xs font-normal">
                       ({tool.status === "in-development" ? "In Development" : "Planned"})
