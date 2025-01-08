@@ -1,5 +1,5 @@
 [
-    { "name": "Encryptor", "path": "/tools/encryptor/", "icon": "LockIcon", "status": "planning" },
+    { "name": "Encryptor", "path": "/tools/encryptor/", "icon": "LockIcon", "status": "ready" },
     { "name": "Password Generator", "path": "/tools/password-generator/", "icon": "KeyIcon", "status": "ready" },
-    { "name": "JSON Beautifier", "path": "/tools/json-beautifier/", "icon": "CodeIcon", "status": "in-development" }
+    { "name": "JSON Beautifier", "path": "/tools/json-beautifier/", "icon": "CodeIcon", "status": "ready" }
   ]

@@ -1,59 +1,274 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { CopyIcon, LockIcon, UnlockIcon } from "lucide-react"
+import CryptoJS from 'crypto-js'
 
-export default function Component() {
-    
+export default function Encryptor() {
+  const [leftText, setLeftText] = useState('')
+  const [rightText, setRightText] = useState('')
+  const [key, setKey] = useState('')
+  const [iv, setIv] = useState('')
+  const [error, setError] = useState('')
+  const [algorithm, setAlgorithm] = useState('CBC')
+  const [useBase64Input, setUseBase64Input] = useState(false)
+
+  const algorithms = [
+    { value: 'CBC', label: 'AES-CBC', requiresIV: true },
+    { value: 'CFB', label: 'AES-CFB', requiresIV: true },
+    { value: 'CTR', label: 'AES-CTR', requiresIV: true },
+    { value: 'OFB', label: 'AES-OFB', requiresIV: true },
+    { value: 'ECB', label: 'AES-ECB', requiresIV: false }
+  ]
+
+  const processEncrypt = () => {
+    try {
+      if (!leftText.trim()) {
+        setError('Please enter text to encrypt')
+        setRightText('')
+        return
+      }
+
+      if (!key.trim()) {
+        setError('Please enter an encryption key')
+        setRightText('')
+        return
+      }
+
+      const requiresIV = algorithms.find(a => a.value === algorithm)?.requiresIV
+
+      if (requiresIV && !iv.trim()) {
+        setError('This mode requires an IV')
+        setRightText('')
+        return
+      }
+
+      const options = {
+        mode: CryptoJS.mode[algorithm as keyof typeof CryptoJS.mode],
+        padding: CryptoJS.pad.Pkcs7
+      } as any
+
+      if (requiresIV) {
+        options.iv = CryptoJS.enc.Utf8.parse(iv)
+      }
+
+      let inputText = leftText
+      if (useBase64Input) {
+        try {
+          inputText = CryptoJS.enc.Base64.parse(leftText).toString(CryptoJS.enc.Utf8)
+        } catch (e) {
+          setError('Invalid Base64 input')
+          setRightText('')
+          return
+        }
+      }
+
+      const result = CryptoJS.AES.encrypt(inputText, key, options).toString()
+      setRightText(result)
+      setError('')
+    } catch (err) {
+      setError('An error occurred during encryption')
+      setRightText('')
+    }
+  }
+
+  const processDecrypt = () => {
+    try {
+      if (!rightText.trim()) {
+        setError('Please enter text to decrypt')
+        setLeftText('')
+        return
+      }
+
+      if (!key.trim()) {
+        setError('Please enter an encryption key')
+        setLeftText('')
+        return
+      }
+
+      const requiresIV = algorithms.find(a => a.value === algorithm)?.requiresIV
+
+      if (requiresIV && !iv.trim()) {
+        setError('This mode requires an IV')
+        setLeftText('')
+        return
+      }
+
+      const options = {
+        mode: CryptoJS.mode[algorithm as keyof typeof CryptoJS.mode],
+        padding: CryptoJS.pad.Pkcs7
+      } as any
+
+      if (requiresIV) {
+        options.iv = CryptoJS.enc.Utf8.parse(iv)
+      }
+
+      let inputText = rightText
+      if (useBase64Input) {
+        try {
+          inputText = CryptoJS.enc.Hex.stringify(CryptoJS.enc.Base64.parse(rightText))
+        } catch (e) {
+          setError('Invalid Base64 input')
+          setLeftText('')
+          return
+        }
+      }
+
+      try {
+        const result = CryptoJS.AES.decrypt(inputText, key, options).toString(CryptoJS.enc.Utf8)
+        if (!result) {
+          throw new Error('Decryption failed')
+        }
+        setLeftText(result)
+        setError('')
+      } catch (e) {
+        setError('Failed to decrypt. Check your key, IV, and input.')
+        setLeftText('')
+      }
+    } catch (err) {
+      setError('An error occurred during decryption')
+      setLeftText('')
+    }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert('Text copied to clipboard!')
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err)
+      })
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-100 to-pink-200 flex flex-col items-center justify-center p-4 text-center">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full"
-      >
-        <h1 className="text-4xl font-bold text-pink-500 mb-6">Under Development</h1>
-        
-        <div className="mb-6">
-          <motion.svg
-            width="120"
-            height="120"
-            viewBox="0 0 120 120"
-            className="mx-auto"
-            animate={{
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 2,
-              ease: "easeInOut",
-              times: [0, 0.2, 0.5, 0.8, 1],
-              repeat: Infinity,
-              repeatDelay: 1
-            }}
+    <div className="max-w-7xl mx-auto mt-10 p-6">
+      <h1 className="text-2xl font-bold mb-6 text-center">AES Encryptor/Decryptor</h1>
+
+      <div className="space-y-6 mb-6">
+        <div>
+          <Label htmlFor="algorithm">AES Mode</Label>
+          <select
+            id="algorithm"
+            className="w-full p-2 rounded-lg border bg-white/5"
+            value={algorithm}
+            onChange={(e) => setAlgorithm(e.target.value)}
           >
-            <circle cx="60" cy="60" r="50" fill="#FFB3BA" />
-            <circle cx="45" cy="45" r="5" fill="#000" />
-            <circle cx="75" cy="45" r="5" fill="#000" />
-            <path d="M40 70 Q60 85 80 70" stroke="#000" strokeWidth="3" fill="none" />
-          </motion.svg>
+            {algorithms.map((a) => (
+              <option key={a.value} value={a.value}>{a.label}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6">
-          <div className="flex items-center mb-2">
-            <AlertTriangle className="text-yellow-500 mr-2" />
-            <span className="font-bold text-yellow-700">Warning</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="key">Encryption Key</Label>
+            <Input
+              id="key"
+              type="text"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="Enter encryption key"
+            />
           </div>
-          <p className="text-yellow-700">
-            Oops! This page is like Kirby after a big meal—totally gone! Just a friendly reminder: any sneaky hacking attempts might make Kirby puff up and roll over to the authorities!
-          </p>
+
+          {algorithms.find(a => a.value === algorithm)?.requiresIV && (
+            <div>
+              <Label htmlFor="iv">Initialization Vector (IV)</Label>
+              <Input
+                id="iv"
+                type="text"
+                value={iv}
+                onChange={(e) => setIv(e.target.value)}
+                placeholder="Enter IV"
+              />
+            </div>
+          )}
         </div>
 
-        <p className="text-gray-600">
-          We&apos;re working hard to bring you something amazing. Please check back soon!
-        </p>
-      </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="base64-input"
+              checked={useBase64Input}
+              onChange={(e) => setUseBase64Input(e.target.checked)}
+            />
+            <Label htmlFor="base64-input">Input is Base64 encoded</Label>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="text-red-500 mb-4 text-center">{error}</div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center h-6">
+            <Label htmlFor="plaintext">Plaintext</Label>
+            {leftText && (
+              <Button
+                onClick={() => copyToClipboard(leftText)}
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                <CopyIcon className="h-4 w-4" />
+                Copy
+              </Button>
+            )}
+          </div>
+          <textarea
+            id="plaintext"
+            className="w-full h-[300px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            value={leftText}
+            onChange={(e) => setLeftText(e.target.value)}
+            placeholder="Enter text to encrypt..."
+          />
+          <Button 
+            onClick={processEncrypt}
+            className="w-full"
+          >
+            <LockIcon className="mr-2 h-4 w-4" />
+            Encrypt →
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center h-6">
+            <Label htmlFor="ciphertext">Ciphertext</Label>
+            {rightText && (
+              <Button
+                onClick={() => copyToClipboard(rightText)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <CopyIcon className="h-4 w-4" />
+                Copy
+              </Button>
+            )}
+          </div>
+          <textarea
+            id="ciphertext"
+            className="w-full h-[300px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            value={rightText}
+            onChange={(e) => setRightText(e.target.value)}
+            placeholder="Enter text to decrypt..."
+          />
+          <Button 
+            onClick={processDecrypt}
+            className="w-full"
+          >
+            <UnlockIcon className="mr-2 h-4 w-4" />
+            ← Decrypt
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

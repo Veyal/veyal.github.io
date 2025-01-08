@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { CopyIcon, RefreshCwIcon } from "lucide-react"
 
 export default function PasswordGenerator() {
-  const [length, setLength] = useState(8)
+  const [length, setLength] = useState(12)
   const [useAlphabet, setUseAlphabet] = useState(true)
   const [useNumbers, setUseNumbers] = useState(true)
   const [useSpecialChars, setUseSpecialChars] = useState(true)

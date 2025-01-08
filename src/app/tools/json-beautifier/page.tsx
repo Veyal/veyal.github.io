@@ -1,58 +1,93 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { CopyIcon } from "lucide-react"
 
-export default function Component() {
+export default function JsonBeautifier() {
+  const [input, setInput] = useState('')
+  const [output, setOutput] = useState('')
+  const [error, setError] = useState('')
+
+  const beautifyJson = () => {
+    try {
+      if (!input.trim()) {
+        setOutput('')
+        setError('Please enter JSON to beautify')
+        return
+      }
+      
+      const parsed = JSON.parse(input)
+      const beautified = JSON.stringify(parsed, null, 2)
+      setOutput(beautified)
+      setError('')
+    } catch (err) {
+      setError('Invalid JSON format')
+      setOutput('')
+    }
+  }
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(output)
+      .then(() => {
+        alert('(>^_^)> Poyo! I copied the pretty JSON to your clipboard! <(^_^<)')
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err)
+      })
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-100 to-pink-200 flex flex-col items-center justify-center p-4 text-center">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full"
-      >
-        <h1 className="text-4xl font-bold text-pink-500 mb-6">Under Development</h1>
-        
-        <div className="mb-6">
-          <motion.svg
-            width="120"
-            height="120"
-            viewBox="0 0 120 120"
-            className="mx-auto"
-            animate={{
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 2,
-              ease: "easeInOut",
-              times: [0, 0.2, 0.5, 0.8, 1],
-              repeat: Infinity,
-              repeatDelay: 1
-            }}
+    <div className="max-w-7xl mx-auto mt-10 p-6">
+      <h1 className="text-2xl font-bold mb-6 text-center">JSON Beautifier</h1>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Input Section */}
+        <div className="flex-1">
+          <Label htmlFor="json-input" className="block mb-2 h-6">Input JSON</Label>
+          <textarea
+            id="json-input"
+            className="w-full h-[500px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Paste your JSON here..."
+          />
+          <Button 
+            onClick={beautifyJson} 
+            className="mt-4 w-full"
           >
-            <circle cx="60" cy="60" r="50" fill="#FFB3BA" />
-            <circle cx="45" cy="45" r="5" fill="#000" />
-            <circle cx="75" cy="45" r="5" fill="#000" />
-            <path d="M40 70 Q60 85 80 70" stroke="#000" strokeWidth="3" fill="none" />
-          </motion.svg>
+            Beautify
+          </Button>
         </div>
 
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6">
-          <div className="flex items-center mb-2">
-            <AlertTriangle className="text-yellow-500 mr-2" />
-            <span className="font-bold text-yellow-700">Warning</span>
+        {/* Output Section */}
+        <div className="flex-1">
+          <div className="flex justify-between items-center mb-2 h-6">
+            <Label htmlFor="json-output">Beautified JSON</Label>
+            {output && (
+              <Button 
+                onClick={copyToClipboard} 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <CopyIcon className="h-4 w-4 mh-1" />
+                Copy
+              </Button>
+            )}
           </div>
-          <p className="text-yellow-700">
-            Oops! This page is like Kirby after a big meal—totally gone! Just a friendly reminder: any sneaky hacking attempts might make Kirby puff up and roll over to the authorities!
-          </p>
+          <div className="h-[500px] overflow-auto">
+            <textarea
+              id="json-output"
+              className="w-full h-full p-4 rounded-lg border bg-white/5 resize-none font-mono"
+              value={error || output}
+              readOnly
+              placeholder="Beautified JSON will appear here..."
+            />
+          </div>
         </div>
-
-        <p className="text-gray-600">
-          We&apos;re working hard to bring you something amazing. Please check back soon!
-        </p>
-      </motion.div>
+      </div>
     </div>
   )
 }
