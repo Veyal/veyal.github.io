@@ -16,14 +16,6 @@
         "expires": "Feb 2027"
     },
     {
-        "name": "Certified APPSEC Practitioner",
-        "abbreviation": "CAP",
-        "organization": "The SecOps Group",
-        "image": "/cap.png",
-        "credentialId": "6903373",
-        "issued": "Jan 2023"
-    },
-    {
         "name": "Certified Ethical Hacker Practical",
         "abbreviation": "CEH Practical",
         "organization": "EC-Council",

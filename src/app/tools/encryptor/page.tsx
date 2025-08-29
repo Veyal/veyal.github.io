@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input"
 import { CopyIcon, LockIcon, UnlockIcon } from "lucide-react"
 import CryptoJS from 'crypto-js'
 
+// Add type for CryptoJS options
+type CryptoOptions = {
+  mode: typeof CryptoJS.mode[keyof typeof CryptoJS.mode];
+  padding: typeof CryptoJS.pad.Pkcs7;
+  iv?: CryptoJS.lib.WordArray;
+}
+
 export default function Encryptor() {
   const [leftText, setLeftText] = useState('')
   const [rightText, setRightText] = useState('')
@@ -46,10 +53,10 @@ export default function Encryptor() {
         return
       }
 
-      const options = {
+      const options: CryptoOptions = {
         mode: CryptoJS.mode[algorithm as keyof typeof CryptoJS.mode],
         padding: CryptoJS.pad.Pkcs7
-      } as any
+      }
 
       if (requiresIV) {
         options.iv = CryptoJS.enc.Utf8.parse(iv)
@@ -59,7 +66,7 @@ export default function Encryptor() {
       if (useBase64Input) {
         try {
           inputText = CryptoJS.enc.Base64.parse(leftText).toString(CryptoJS.enc.Utf8)
-        } catch (e) {
+        } catch (_e) {
           setError('Invalid Base64 input')
           setRightText('')
           return
@@ -69,7 +76,7 @@ export default function Encryptor() {
       const result = CryptoJS.AES.encrypt(inputText, key, options).toString()
       setRightText(result)
       setError('')
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred during encryption')
       setRightText('')
     }
@@ -97,10 +104,10 @@ export default function Encryptor() {
         return
       }
 
-      const options = {
+      const options: CryptoOptions = {
         mode: CryptoJS.mode[algorithm as keyof typeof CryptoJS.mode],
         padding: CryptoJS.pad.Pkcs7
-      } as any
+      }
 
       if (requiresIV) {
         options.iv = CryptoJS.enc.Utf8.parse(iv)
@@ -110,7 +117,7 @@ export default function Encryptor() {
       if (useBase64Input) {
         try {
           inputText = CryptoJS.enc.Hex.stringify(CryptoJS.enc.Base64.parse(rightText))
-        } catch (e) {
+        } catch (_e) {
           setError('Invalid Base64 input')
           setLeftText('')
           return
@@ -124,11 +131,11 @@ export default function Encryptor() {
         }
         setLeftText(result)
         setError('')
-      } catch (e) {
+      } catch (_e) {
         setError('Failed to decrypt. Check your key, IV, and input.')
         setLeftText('')
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An error occurred during decryption')
       setLeftText('')
     }
@@ -146,14 +153,14 @@ export default function Encryptor() {
 
   return (
     <div className="max-w-7xl mx-auto mt-10 p-6">
-      <h1 className="text-2xl font-bold mb-6 text-center">AES Encryptor/Decryptor</h1>
+      <h1 className="text-4xl font-black mb-8 text-center bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">AES Encryptor/Decryptor</h1>
 
       <div className="space-y-6 mb-6">
         <div>
           <Label htmlFor="algorithm">AES Mode</Label>
           <select
             id="algorithm"
-            className="w-full p-2 rounded-lg border bg-white/5"
+            className="w-full p-3 rounded-full border-2 border-pink-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={algorithm}
             onChange={(e) => setAlgorithm(e.target.value)}
           >
@@ -172,6 +179,7 @@ export default function Encryptor() {
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="Enter encryption key"
+              className="bg-white dark:bg-gray-800"
             />
           </div>
 
@@ -184,6 +192,7 @@ export default function Encryptor() {
                 value={iv}
                 onChange={(e) => setIv(e.target.value)}
                 placeholder="Enter IV"
+                className="bg-white dark:bg-gray-800"
               />
             </div>
           )}
@@ -203,7 +212,7 @@ export default function Encryptor() {
       </div>
 
       {error && (
-        <div className="text-red-500 mb-4 text-center">{error}</div>
+        <div className="bg-red-100 dark:bg-red-900/30 border-2 border-red-300 rounded-full px-4 py-2 mb-4 text-center text-red-600 dark:text-red-400 font-semibold">{error}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -224,7 +233,7 @@ export default function Encryptor() {
           </div>
           <textarea
             id="plaintext"
-            className="w-full h-[300px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            className="w-full h-[300px] p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={leftText}
             onChange={(e) => setLeftText(e.target.value)}
             placeholder="Enter text to encrypt..."
@@ -255,7 +264,7 @@ export default function Encryptor() {
           </div>
           <textarea
             id="ciphertext"
-            className="w-full h-[300px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            className="w-full h-[300px] p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={rightText}
             onChange={(e) => setRightText(e.target.value)}
             placeholder="Enter text to decrypt..."

@@ -23,6 +23,7 @@ export default function JsonBeautifier() {
       setOutput(beautified)
       setError('')
     } catch (err) {
+      console.log(err)
       setError('Invalid JSON format')
       setOutput('')
     }
@@ -40,7 +41,7 @@ export default function JsonBeautifier() {
 
   return (
     <div className="max-w-7xl mx-auto mt-10 p-6">
-      <h1 className="text-2xl font-bold mb-6 text-center">JSON Beautifier</h1>
+      <h1 className="text-4xl font-black mb-8 text-center bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">JSON Beautifier</h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Input Section */}
@@ -48,7 +49,7 @@ export default function JsonBeautifier() {
           <Label htmlFor="json-input" className="block mb-2 h-6">Input JSON</Label>
           <textarea
             id="json-input"
-            className="w-full h-[500px] p-4 rounded-lg border bg-white/5 resize-none font-mono"
+            className="w-full h-[500px] p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste your JSON here..."
@@ -80,8 +81,9 @@ export default function JsonBeautifier() {
           <div className="h-[500px] overflow-auto">
             <textarea
               id="json-output"
-              className="w-full h-full p-4 rounded-lg border bg-white/5 resize-none font-mono"
+              className="w-full h-full p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
               value={error || output}
+              style={{ color: error ? '#ef4444' : 'inherit' }}
               readOnly
               placeholder="Beautified JSON will appear here..."
             />

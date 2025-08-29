@@ -50,8 +50,8 @@ export default function PasswordGenerator() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
-      <h1 className="text-2xl font-bold mb-6 text-center">Password Generator</h1>
+    <div className="max-w-md mx-auto mt-10 p-6">
+      <h1 className="text-4xl font-black mb-8 text-center bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">Password Generator</h1>
       
       <div className="mb-4">
         <Label htmlFor="length-slider" className="block mb-2">Password Length: {length}</Label>
@@ -99,6 +99,7 @@ export default function PasswordGenerator() {
           id="custom-chars"
           type="text"
           placeholder="Add your own characters"
+          className="bg-white dark:bg-gray-800 border-2 border-pink-300 rounded-full"
           value={customChars}
           onChange={(e) => setCustomChars(e.target.value)}
         />
@@ -112,7 +113,7 @@ export default function PasswordGenerator() {
             type="text"
             readOnly
             value={password}
-            className="flex-grow"
+            className="flex-grow bg-white dark:bg-gray-800 border-2 border-pink-300 rounded-full"
           />
           <Button onClick={copyToClipboard} className="ml-2" title="Copy to clipboard">
             <CopyIcon className="h-4 w-4" />
