@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,16 @@ export default function ToolsLayout({
   const pathname = usePathname();
   const readyTools = toolsData.filter((tool) => tool.status === "ready");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const updateScreenSize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    updateScreenSize();
+    window.addEventListener("resize", updateScreenSize);
+    return () => window.removeEventListener("resize", updateScreenSize);
+  }, []);
 
   return (
     <section className="min-h-screen">
@@ -61,8 +71,8 @@ export default function ToolsLayout({
 
             {/* Tool Navigation Pills */}
             <nav className="flex gap-2 items-center">
-              {/* Show first 2 tools on mobile, 3 on tablet and desktop */}
-              {readyTools.slice(0, typeof window !== 'undefined' && window.innerWidth < 640 ? 2 : 3).map((tool, index) => (
+              {/* Show first 3 tools on tablet and desktop */}
+              {readyTools.slice(0, 3).map((tool, index) => (
                 <Link
                   key={tool.name}
                   href={tool.path}
@@ -185,7 +195,7 @@ export default function ToolsLayout({
                       >
                         <div className="p-2">
                           {/* On mobile show tools starting from index 2, on desktop from index 3 */}
-                          {readyTools.slice(typeof window !== 'undefined' && window.innerWidth < 640 ? 2 : 3).map((tool, index) => (
+                          {readyTools.slice(isMobile ? 2 : 3).map((tool, index) => (
                             <Link
                               key={tool.name}
                               href={tool.path}

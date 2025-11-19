@@ -71,7 +71,7 @@ export default function HomePage() {
           <div className="relative inline-block">
             <h1 className="text-5xl sm:text-7xl font-black mb-2">
               <span className="bg-gradient-to-b from-pink-400 via-pink-500 to-pink-600 bg-clip-text text-transparent drop-shadow-2xl">
-                VEYAL'S
+                VEYAL&apos;S
               </span>
             </h1>
             <h2 className="text-3xl sm:text-5xl font-black">
