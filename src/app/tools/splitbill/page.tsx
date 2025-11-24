@@ -22,14 +22,28 @@ import { cn } from "@/lib/utils";
 
 type Step = "upload" | "review" | "people" | "assignment" | "results";
 
-type KirbyQualityMode = "economy" | "balanced" | "precision" | "ultra";
+type KirbyProvider = "azure" | "gemini";
 
 type KirbyAiConfig = {
   endpoint: string;
   apiKey: string;
   apiVersion: string;
   deployment: string;
-  qualityMode: KirbyQualityMode;
+  provider: KirbyProvider;
+  geminiApiKey: string;
+  geminiModel: string;
+};
+
+type TokenUsage = {
+  provider: "azure" | "gemini";
+  totalTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+};
+
+type AnalyzeResult = {
+  parsedJson: any;
+  usage: TokenUsage;
 };
 
 type ExtraCharge = {
@@ -39,6 +53,7 @@ type ExtraCharge = {
 
 type ReceiptItem = {
   name: string;
+  translatedName?: string;
   quantity: number;
   price: number;
   total: number;
@@ -72,6 +87,7 @@ type PersonShare = {
   color: string;
   items: {
     name: string;
+    translatedName?: string;
     quantity: number;
     price: number;
     percentage: number;
@@ -128,59 +144,47 @@ const STEP_META: Record<
   },
 };
 
-const QUALITY_PRESETS: Record<
-  KirbyQualityMode,
-  { label: string; description: string; maxTokens: number; temperature: number }
-> = {
-  economy: {
-    label: "Kirby Lite",
-    description: "Fast & cheap for crystal-clear receipts",
-    maxTokens: 2200,
-    temperature: 0.15,
-  },
-  balanced: {
-    label: "Kirby Balanced",
-    description: "Great accuracy for most restaurant bills",
-    maxTokens: 3200,
-    temperature: 0.1,
-  },
-  precision: {
-    label: "Kirby Precision",
-    description: "Extra tokens for messy or long receipts",
-    maxTokens: 4500,
-    temperature: 0.05,
-  },
-  ultra: {
-    label: "Kirby Ultra",
-    description: "Maximum context window (16k tokens) for the toughest receipts",
-    maxTokens: 16384,
-    temperature: 0.01,
-  },
+const ULTRA_PRESET = {
+  label: "Kirby Ultra",
+  description: "Maximum context window (16k tokens) for the toughest receipts",
+  maxTokens: 16384,
+  temperature: 0.01,
 };
 
-const RECEIPT_PROMPT = `You are a receipt parsing and reconstruction expert. Azure OCR may break lines, merge words, or misread characters. Clean the OCR text and extract billing data, returning ONLY a minified JSON with this structure:
-{"restaurant":"","address":"","date":"","items":[{"name":"","price":0}],"subtotal":0,"serviceCharge":0,"tax":0,"discount":0,"extraCharges":[{"name":"","amount":0}],"total":0}
-
-Rules:
-- Keep full item names (sizes, variants, modifiers). Remove only leading quantities (e.g., "2x").
-- Use the printed line total; never recalc from quantity.
-- Merge wrapped lines belonging to one item and fix obvious OCR mistakes (I00→100, O→0).
-- Treat the rightmost numeric value on a line as the true line total; ignore unit prices on the left.
-- Capture service charges, PB1/Pajak/PPN/VAT/GST or similar taxes.
-- Record all discounts in the "discount" field. If the amount is negative, store it as-is; if only a percentage appears, store 0. Add multiple discounts together.
-- Extra charges include rounding, packaging, delivery, surcharges, etc., each as {"name":"","amount":number}. Negative values are allowed.
-- For Indonesian Rupiah, dots/commas usually indicate thousands (145.000 => 145000) unless the format clearly shows decimals.
-- Convert dates to YYYY-MM-DD when possible; otherwise return an empty string.
-- If data is missing, use empty string or 0.
-- Output the JSON object only, with no commentary.`;
+const RECEIPT_PROMPT = [
+  'You are a receipt parsing and reconstruction expert. Azure OCR may break lines, merge words, or misread characters. Clean the OCR text and extract billing data, returning ONLY a minified JSON with this structure:',
+  '{"restaurant":"","address":"","date":"","items":[{"name":"","translatedName":"","price":0}],"subtotal":0,"serviceCharge":0,"tax":0,"discount":0,"extraCharges":[{"name":"","amount":0}],"total":0}',
+  '',
+  'Rules:',
+  '- Keep full item names (sizes, variants, modifiers). Remove only leading quantities (e.g., "2x").',
+  '- For each item, provide "translatedName" with an English translation if the original name is not in English. If already in English, set translatedName to empty string.',
+  '- Use the printed line total; never recalc from quantity.',
+  '- Merge wrapped lines belonging to one item and fix obvious OCR mistakes (I00→100, O→0).',
+  '- Treat the rightmost numeric value on a line as the true line total; ignore unit prices on the left.',
+  '- Capture service charges, PB1/Pajak/PPN/VAT/GST or similar taxes.',
+  '- Record all discounts in the "discount" field. If the amount is negative, store it as-is; if only a percentage appears, store 0. Add multiple discounts together.',
+  '- Extra charges include rounding, packaging, delivery, surcharges, etc., each as {"name":"","amount":number}. Negative values are allowed.',
+  '- For Indonesian Rupiah, dots/commas usually indicate thousands (145.000 => 145000) unless the format clearly shows decimals.',
+  '- Convert dates to YYYY-MM-DD when possible; otherwise return an empty string.',
+  '- If data is missing, use empty string or 0.',
+  '- Output the JSON object only, with no commentary.',
+  '- Use the printed "Total," "Grand Total," or equivalent final line as the `total` field; this is the number the customer actually paid after discounts and charges. Double-check that every component (items, service, tax, discounts, extra fees) either sums toward that final amount or is documented separately so we can trace reconciliations.',
+].join('\n');
 
 const CONFIG_STORAGE_KEY = "splitbill.kirby-config";
+const GEMINI_MODELS = [
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "gemini-3-pro", label: "Gemini 3 Pro" },
+];
+
 const DEFAULT_KIRBY_CONFIG: KirbyAiConfig = {
   endpoint: "",
   apiKey: "",
   apiVersion: "2025-01-01-preview",
   deployment: "gpt-5-mini",
-  qualityMode: "balanced",
+  provider: "azure",
+  geminiApiKey: "",
+  geminiModel: "gemini-2.5-flash",
 };
 
 const DEFAULT_CROP_POLYGON: CropPoint[] = [
@@ -216,12 +220,93 @@ const currencyFormatter = new Intl.NumberFormat("id-ID", {
 
 const formatCurrency = (amount: number) => currencyFormatter.format(amount);
 
+const formatTokenCount = (value?: number) =>
+  value != null ? value.toLocaleString() : "unknown";
+
+const describeTokenUsage = (usage: TokenUsage) => {
+  const parts: string[] = [];
+  if (usage.totalTokens != null) {
+    parts.push(`Total ${formatTokenCount(usage.totalTokens)} tokens`);
+  }
+  if (usage.promptTokens != null) {
+    parts.push(`Prompt ${formatTokenCount(usage.promptTokens)}`);
+  }
+  if (usage.completionTokens != null) {
+    parts.push(`Completion ${formatTokenCount(usage.completionTokens)}`);
+  }
+  return parts.join(" · ");
+};
+
+const getFirstNumber = (source: Record<string, any> | undefined, ...keys: string[]) => {
+  if (!source) return undefined;
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number") {
+      return value;
+    }
+  }
+  return undefined;
+};
+
+const buildTokenUsage = (
+  provider: TokenUsage["provider"],
+  source: Record<string, any> | undefined,
+  totalKeys: string[],
+  promptKeys: string[],
+  completionKeys: string[]
+): TokenUsage => ({
+  provider,
+  totalTokens: getFirstNumber(source, ...totalKeys),
+  promptTokens: getFirstNumber(source, ...promptKeys),
+  completionTokens: getFirstNumber(source, ...completionKeys),
+});
+
 const getRandomColor = () =>
   COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)];
 
-const isQualityMode = (value: string | null): value is KirbyQualityMode =>
-  !!value && Object.hasOwn(QUALITY_PRESETS, value as KirbyQualityMode);
+// Optimized image processing with compression
+const processImageForOCR = async (file: File, maxWidth = 1200, maxHeight = 1600, quality = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
+    if (!ctx) {
+      reject(new Error('Canvas not supported'));
+      return;
+    }
+
+    img.onload = () => {
+      // Calculate new dimensions maintaining aspect ratio
+      let { width, height } = img;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Use better image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert to base64 with compression
+      const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+      resolve(base64);
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// Legacy function for backward compatibility
 const toBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -238,6 +323,23 @@ const toBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+const extractJsonObject = (content: string) => {
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_error) {
+    const fallback = content.match(/\{[\s\S]*\}/);
+    if (!fallback) {
+      throw new Error("Unable to parse structured JSON response.");
+    }
+    parsed = JSON.parse(fallback[0]);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Parsed data is not a valid JSON object.");
+  }
+  return parsed;
+};
+
 const parseReceipt = (data: any): ReceiptData => {
   const safeNumber = (value: any) => {
     const num = Number(value);
@@ -250,8 +352,10 @@ const parseReceipt = (data: any): ReceiptData => {
       const price = safeNumber(item?.price);
       const name = (item?.name ?? "").trim();
       if (!name) return null;
+      const translatedName = (item?.translatedName ?? "").trim();
       return {
         name,
+        translatedName: translatedName || undefined,
         quantity: 1,
         price,
         total: price,
@@ -339,6 +443,9 @@ export default function SplitBillTool() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ocrMeta, setOcrMeta] = useState<OcrMeta | null>(null);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
   const cropAreaRef = useRef<HTMLDivElement>(null);
   const cropImageRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -354,23 +461,6 @@ export default function SplitBillTool() {
     });
   }, []);
 
-  const activeQualityMode: KirbyQualityMode = isQualityMode(
-    kirbyConfig.qualityMode
-  )
-    ? kirbyConfig.qualityMode
-    : "balanced";
-  const currentQualityPreset = QUALITY_PRESETS[activeQualityMode];
-  const updateQualityMode = (mode: KirbyQualityMode) => {
-    setKirbyConfig((prev) => {
-      const next = { ...prev, qualityMode: mode };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(next));
-      }
-      return next;
-    });
-    setConfigDraft((prev) => ({ ...prev, qualityMode: mode }));
-  };
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -380,18 +470,40 @@ export default function SplitBillTool() {
       params.get("apiVersion") || DEFAULT_KIRBY_CONFIG.apiVersion;
     const deployment =
       params.get("deployment") || DEFAULT_KIRBY_CONFIG.deployment;
-    const qualityParam = params.get("quality");
-    const qualityMode = isQualityMode(qualityParam)
-      ? qualityParam
-      : DEFAULT_KIRBY_CONFIG.qualityMode;
+    const providerParam = params.get("provider");
+    const provider: KirbyProvider =
+      providerParam === "gemini" ? "gemini" : "azure";
+    const geminiApiKey =
+      params.get("geminiKey") || DEFAULT_KIRBY_CONFIG.geminiApiKey;
+    const geminiModel =
+      params.get("geminiModel") || DEFAULT_KIRBY_CONFIG.geminiModel;
 
-    if (endpoint && apiKey) {
-      const config = {
+    if (provider === "gemini" && geminiApiKey) {
+      const config: KirbyAiConfig = {
+        endpoint: endpoint?.replace(/\/$/, "") || "",
+        apiKey: apiKey || "",
+        apiVersion,
+        deployment,
+        provider: "gemini",
+        geminiApiKey,
+        geminiModel,
+      };
+      setKirbyConfig(config);
+      setConfigDraft(config);
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+      setConfigLoadedFromUrl(true);
+      return;
+    }
+
+    if (provider === "azure" && endpoint && apiKey) {
+      const config: KirbyAiConfig = {
         endpoint: endpoint.replace(/\/$/, ""),
         apiKey,
         apiVersion,
         deployment,
-        qualityMode,
+        provider: "azure",
+        geminiApiKey,
+        geminiModel,
       };
       setKirbyConfig(config);
       setConfigDraft(config);
@@ -409,9 +521,10 @@ export default function SplitBillTool() {
           apiKey: parsed.apiKey || "",
           apiVersion: parsed.apiVersion || DEFAULT_KIRBY_CONFIG.apiVersion,
           deployment: parsed.deployment || DEFAULT_KIRBY_CONFIG.deployment,
-          qualityMode: isQualityMode(parsed.qualityMode)
-            ? parsed.qualityMode
-            : DEFAULT_KIRBY_CONFIG.qualityMode,
+          provider: parsed.provider === "gemini" ? "gemini" : "azure",
+          geminiApiKey: parsed.geminiApiKey || "",
+          geminiModel:
+            parsed.geminiModel || DEFAULT_KIRBY_CONFIG.geminiModel,
         };
         setKirbyConfig(normalized);
         setConfigDraft(normalized);
@@ -472,9 +585,9 @@ export default function SplitBillTool() {
       }, 0);
       return { ...person, subtotal, count: personItems.length };
     });
-  }, [currentReceipt, people]);
+  }, [currentReceipt, people]); // More specific dependencies
 
-  const handleFileDrop = (fileList: FileList | null) => {
+  const handleFileDrop = useCallback((fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];
     if (!file.type.startsWith("image/")) {
@@ -486,9 +599,9 @@ export default function SplitBillTool() {
     setHasCroppedImage(false);
     setCropPolygon(cloneDefaultPolygon());
     setShowCropModal(false);
-  };
+  }, []);
 
-  const handleResetUpload = () => {
+  const handleResetUpload = useCallback(() => {
     setSelectedFile(null);
     setOriginalFile(null);
     setPreviewUrl(null);
@@ -501,7 +614,8 @@ export default function SplitBillTool() {
     setPeople([]);
     setAssignmentModalIndex(null);
     setCurrentStep("upload");
-  };
+    setTokenUsage(null);
+  }, []);
 
   const handleResetCrop = () => {
     if (!originalFile) return;
@@ -512,8 +626,14 @@ export default function SplitBillTool() {
   };
 
   const handleSaveConfig = () => {
-    if (!configDraft.endpoint.trim() || !configDraft.apiKey.trim()) {
-      setErrorMessage("Endpoint and API Key are required");
+    const provider = configDraft.provider || "azure";
+    if (provider === "azure") {
+      if (!configDraft.endpoint.trim() || !configDraft.apiKey.trim()) {
+        setErrorMessage("Endpoint and API Key are required for Azure.");
+        return;
+      }
+    } else if (!configDraft.geminiApiKey.trim()) {
+      setErrorMessage("Gemini API Key is required.");
       return;
     }
     const sanitized: KirbyAiConfig = {
@@ -523,7 +643,10 @@ export default function SplitBillTool() {
         configDraft.apiVersion.trim() || DEFAULT_KIRBY_CONFIG.apiVersion,
       deployment:
         configDraft.deployment.trim() || DEFAULT_KIRBY_CONFIG.deployment,
-      qualityMode: configDraft.qualityMode || DEFAULT_KIRBY_CONFIG.qualityMode,
+      provider,
+      geminiApiKey: configDraft.geminiApiKey.trim(),
+      geminiModel:
+        configDraft.geminiModel.trim() || DEFAULT_KIRBY_CONFIG.geminiModel,
     };
     setKirbyConfig(sanitized);
     if (typeof window !== "undefined") {
@@ -534,15 +657,22 @@ export default function SplitBillTool() {
 
   const generateShareableUrl = () => {
     if (typeof window === "undefined") return null;
-    if (!kirbyConfig.endpoint || !kirbyConfig.apiKey) return null;
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const params = new URLSearchParams({
-      endpoint: kirbyConfig.endpoint,
-      apiKey: kirbyConfig.apiKey,
-      apiVersion: kirbyConfig.apiVersion,
-      deployment: kirbyConfig.deployment,
-      quality: activeQualityMode,
+      provider: kirbyConfig.provider,
     });
+
+    if (kirbyConfig.provider === "gemini") {
+      if (!kirbyConfig.geminiApiKey) return null;
+      params.set("geminiKey", kirbyConfig.geminiApiKey);
+      params.set("geminiModel", kirbyConfig.geminiModel);
+    } else {
+      if (!kirbyConfig.endpoint || !kirbyConfig.apiKey) return null;
+      params.set("endpoint", kirbyConfig.endpoint);
+      params.set("apiKey", kirbyConfig.apiKey);
+      params.set("apiVersion", kirbyConfig.apiVersion);
+      params.set("deployment", kirbyConfig.deployment);
+    }
     return `${baseUrl}?${params.toString()}`;
   };
 
@@ -564,31 +694,31 @@ export default function SplitBillTool() {
   };
 
   const analyzeReceipt = async () => {
+    if (isAnalyzing) return; // Prevent concurrent analysis
+
     if (!selectedFile) {
       setErrorMessage("Please upload a receipt first.");
       return;
     }
-    if (!kirbyConfig.endpoint || !kirbyConfig.apiKey) {
-      setErrorMessage("Configure Kirby AI credentials first.");
+    const provider = kirbyConfig.provider || "azure";
+    if (provider === "azure") {
+      if (!kirbyConfig.endpoint || !kirbyConfig.apiKey) {
+        setErrorMessage("Configure Azure OpenAI credentials first.");
+        setShowConfigModal(true);
+        return;
+      }
+    } else if (!kirbyConfig.geminiApiKey) {
+      setErrorMessage("Provide your Gemini API key first.");
       setShowConfigModal(true);
       return;
     }
 
-    try {
-      setLoadingState({
-        text: "Analyzing receipt...",
-        subtext: "Consulting Kirby Vision",
-      });
-      const imageBase64 = await toBase64(selectedFile);
+    const analyzeWithAzure = async (imageBase64: string): Promise<AnalyzeResult> => {
       const url = `${kirbyConfig.endpoint}/openai/deployments/${kirbyConfig.deployment}/chat/completions?api-version=${kirbyConfig.apiVersion}`;
-
       const requestBody: any = {
         model: kirbyConfig.deployment,
         messages: [
-          {
-            role: "system",
-            content: RECEIPT_PROMPT,
-          },
+          { role: "system", content: RECEIPT_PROMPT },
           {
             role: "user",
             content: [
@@ -606,13 +736,14 @@ export default function SplitBillTool() {
           },
         ],
         response_format: { type: "json_object" },
-        max_completion_tokens: currentQualityPreset.maxTokens,
+        max_completion_tokens: ULTRA_PRESET.maxTokens,
       };
-
       const normalizedDeployment = (kirbyConfig.deployment || "").toLowerCase();
       if (!normalizedDeployment.includes("gpt-5")) {
-        requestBody.temperature = currentQualityPreset.temperature;
+        requestBody.temperature = ULTRA_PRESET.temperature;
       }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
       const response = await fetch(url, {
         method: "POST",
@@ -621,46 +752,177 @@ export default function SplitBillTool() {
           "api-key": kirbyConfig.apiKey,
         },
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Kirby AI error: ${response.status} - ${text}`);
-      }
+        let errorMessage = `Kirby AI error: ${response.status}`;
 
+        // Provide more specific error messages
+        if (response.status === 401) {
+          errorMessage = "Invalid API key. Please check your Azure OpenAI credentials.";
+        } else if (response.status === 403) {
+          errorMessage = "Access denied. Please check your Azure OpenAI permissions.";
+        } else if (response.status === 429) {
+          errorMessage = "Rate limit exceeded. Please try again in a moment.";
+        } else if (response.status === 400) {
+          errorMessage = "Invalid request. Please check your API configuration.";
+        } else if (response.status >= 500) {
+          errorMessage = "Azure OpenAI service temporarily unavailable. Please try again.";
+        }
+
+        throw new Error(`${errorMessage} (${text.slice(0, 100)}...)`);
+      }
       const data = await response.json();
       const jsonText = data?.choices?.[0]?.message?.content;
       if (!jsonText) {
         throw new Error("Kirby AI response did not include parsed content.");
       }
+      const usage = buildTokenUsage(
+        "azure",
+        data?.usage ?? data?.usageMetadata ?? data?.tokenUsage,
+        ["total_tokens", "totalTokens", "totalTokenCount", "total"],
+        ["prompt_tokens", "promptTokens", "prompt", "promptTokenCount"],
+        ["completion_tokens", "completionTokens", "completion", "completionTokenCount"]
+      );
+      return {
+        parsedJson: extractJsonObject(jsonText),
+        usage,
+      };
+    };
 
-      let parsedJson;
-      try {
-        parsedJson = JSON.parse(jsonText);
-      } catch (error) {
-        const fallback = jsonText.match(/\{[\s\S]*\}/);
-        if (!fallback) {
-          throw new Error("Unable to parse JSON response from Kirby AI.");
+    const analyzeWithGemini = async (imageBase64: string): Promise<AnalyzeResult> => {
+      const model =
+        kirbyConfig.geminiModel || DEFAULT_KIRBY_CONFIG.geminiModel;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${kirbyConfig.geminiApiKey}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `${RECEIPT_PROMPT}\n\nAnalyze this receipt image and respond with the JSON described above.`,
+                },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: imageBase64,
+                  },
+                },
+              ],
+            },
+          ],
+        generationConfig: {
+          temperature: ULTRA_PRESET.temperature,
+          maxOutputTokens: ULTRA_PRESET.maxTokens,
+        },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        const text = await response.text();
+        let errorMessage = `Gemini error: ${response.status}`;
+
+        // Provide more specific error messages for Gemini
+        if (response.status === 400) {
+          errorMessage = "Invalid request to Gemini API. Please check your API key.";
+        } else if (response.status === 401) {
+          errorMessage = "Invalid Gemini API key. Please check your credentials.";
+        } else if (response.status === 403) {
+          errorMessage = "Gemini API access denied. Please check your API key permissions.";
+        } else if (response.status === 429) {
+          errorMessage = "Gemini API rate limit exceeded. Please try again in a moment.";
+        } else if (response.status === 500) {
+          errorMessage = "Gemini service temporarily unavailable. Please try again.";
         }
-        parsedJson = JSON.parse(fallback[0]);
+
+        throw new Error(`${errorMessage} (${text.slice(0, 100)}...)`);
       }
+      const data = await response.json();
+      const parts = data?.candidates?.[0]?.content?.parts;
+      const text = parts
+        ?.map((part: { text?: string }) => part.text)
+        .filter(Boolean)
+        .join("\n");
+      if (!text) {
+        throw new Error("Gemini response did not include parsed content.");
+      }
+      const usage = buildTokenUsage(
+        "gemini",
+        data?.usageMetadata ?? data?.usage ?? data?.tokenUsage,
+        ["totalTokenCount", "total_token_count", "total_tokens", "totalToken", "total"],
+        ["promptTokenCount", "prompt_token_count", "prompt_tokens", "promptTokens", "prompt"],
+        ["candidatesTokenCount", "completion_token_count", "completion_tokens", "completionTokens", "completion"]
+      );
+      return {
+        parsedJson: extractJsonObject(text),
+        usage,
+      };
+    };
+
+    setIsAnalyzing(true);
+    setErrorMessage(null);
+    setTokenUsage(null);
+
+    try {
+      setLoadingState({
+        text: "Analyzing receipt...",
+        subtext: "Processing image for Kirby Vision",
+      });
+
+      // Use optimized image processing for OCR
+      const imageBase64 = await processImageForOCR(selectedFile);
+
+      setLoadingState({
+        text: "Analyzing receipt...",
+        subtext: "Consulting Kirby Vision",
+      });
+
+      const { parsedJson, usage } =
+        provider === "gemini"
+          ? await analyzeWithGemini(imageBase64)
+          : await analyzeWithAzure(imageBase64);
 
       const receipt = parseReceipt(parsedJson);
       if (!receipt.items.length) {
-        throw new Error("No items detected. Try a clearer photo.");
+        throw new Error("No items detected. Try a clearer photo or crop to focus on the receipt text.");
       }
 
       setCurrentReceipt(receipt);
+      setTokenUsage(usage);
       setOcrMeta({
-        method: `Kirby Vision · ${currentQualityPreset.label}`,
+        method: `Kirby Vision · ${ULTRA_PRESET.label}`,
       });
       setCurrentStep("review");
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to analyze receipt."
-      );
+      let errorMessage = "Failed to analyze receipt.";
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Request timed out. The image might be too large or the API is slow. Try cropping the image or using a smaller quality setting.";
+        } else if (error.message.includes('fetch')) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setErrorMessage(errorMessage);
     } finally {
       setLoadingState(null);
+      setIsAnalyzing(false);
     }
   };
 
@@ -841,6 +1103,7 @@ export default function SplitBillTool() {
         const shareAmount = item.total * (percentage / 100);
         person.items.push({
           name: item.name,
+          translatedName: item.translatedName,
           quantity: item.quantity * (percentage / 100),
           price: shareAmount,
           percentage,
@@ -887,19 +1150,20 @@ export default function SplitBillTool() {
     setCurrentStep("results");
   };
 
-  const exportResults = () => {
-    if (!results) return;
+  const buildResultsSummary = (peopleShares: PersonShare[]) => {
     const lines = [
       "SplitBill Results",
       "",
-      ...results.flatMap((person) => [
+      ...peopleShares.flatMap((person) => [
         `${person.name} - ${formatCurrency(person.total)}`,
-        ...person.items.map(
-          (item) =>
-            `  • ${item.name} (${item.percentage.toFixed(1)}%) -> ${formatCurrency(
-              item.price
-            )}`
-        ),
+        ...person.items.map((item) => {
+          const displayName = item.translatedName 
+            ? `${item.translatedName} (${item.name})`
+            : item.name;
+          return `  • ${displayName} (${item.percentage.toFixed(1)}%) -> ${formatCurrency(
+            item.price
+          )}`;
+        }),
         `  Service Charge: ${formatCurrency(person.serviceCharge)}`,
         `  Tax: ${formatCurrency(person.tax)}`,
         ...person.extraCharges.map(
@@ -910,16 +1174,46 @@ export default function SplitBillTool() {
           : []),
         "",
       ]),
+      `Grand Total: ${formatCurrency(
+        peopleShares.reduce((sum, person) => sum + person.total, 0)
+      )}`,
     ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `splitbill-${new Date().toISOString().split("T")[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    return lines.join("\n");
+  };
+
+  const shareResults = async () => {
+    if (!results || !results.length) return;
+    const summaryText = buildResultsSummary(results);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "SplitBill results",
+          text: summaryText,
+        });
+        setShareNotice("Shared bill via system share sheet");
+        setTimeout(() => setShareNotice(null), 4000);
+        return;
+      } catch (error) {
+        // If user cancels share, silently ignore, otherwise fall back.
+        if (error && (error as Error).name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(summaryText);
+        setShareNotice("Bill summary copied to clipboard");
+        setTimeout(() => setShareNotice(null), 4000);
+        return;
+      } catch {
+        // ignore and fall through
+      }
+    }
+
+    alert("Unable to share automatically. Please copy the summary manually.");
   };
 
   const stepIndex = STEP_ORDER.indexOf(currentStep);
@@ -1009,13 +1303,17 @@ export default function SplitBillTool() {
   };
 
   const handleApplyCrop = async () => {
+    if (isCropping) return; // Prevent concurrent cropping
+
     const polygon = getActivePolygon();
     if (!polygon.length || !cropImageRef.current || !selectedFile) {
       setErrorMessage("Adjust the crop handles to highlight the receipt.");
       return;
     }
 
-    setIsApplyingCrop(true);
+    setIsCropping(true);
+    setErrorMessage(null);
+
     try {
       const imageElement = cropImageRef.current;
       const scaledPoints = polygon.map((point) => ({
@@ -1037,43 +1335,59 @@ export default function SplitBillTool() {
       }
 
       const canvas = document.createElement("canvas");
-      canvas.width = sw;
-      canvas.height = sh;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        setErrorMessage("Unable to crop image in this browser.");
-        return;
-      }
-      ctx.save();
-      ctx.beginPath();
-      scaledPoints.forEach((point, index) => {
-        const dx = point.x - minX;
-        const dy = point.y - minY;
-        if (index === 0) {
-          ctx.moveTo(dx, dy);
-        } else {
-          ctx.lineTo(dx, dy);
+
+      try {
+        canvas.width = sw;
+        canvas.height = sh;
+
+        if (!ctx) {
+          setErrorMessage("Unable to crop image in this browser.");
+          return;
         }
-      });
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(imageElement, minX, minY, sw, sh, 0, 0, sw, sh);
-      ctx.restore();
-      ctx.globalCompositeOperation = "destination-over";
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, sw, sh);
-      const croppedDataUrl = canvas.toDataURL("image/png", 1);
 
-      const response = await fetch(croppedDataUrl);
-      const blob = await response.blob();
-      const baseName =
-        (selectedFile.name?.replace(/\.[^.]+$/, "") || "receipt") +
-        "-cropped.png";
-      const croppedFile = new File([blob], baseName, { type: blob.type });
+        // Optimize canvas operations
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
-      setSelectedFile(croppedFile);
-      setHasCroppedImage(true);
-      setShowCropModal(false);
+        ctx.save();
+        ctx.beginPath();
+        scaledPoints.forEach((point, index) => {
+          const dx = point.x - minX;
+          const dy = point.y - minY;
+          if (index === 0) {
+            ctx.moveTo(dx, dy);
+          } else {
+            ctx.lineTo(dx, dy);
+          }
+        });
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(imageElement, minX, minY, sw, sh, 0, 0, sw, sh);
+        ctx.restore();
+
+        // Fill background with white (better for OCR)
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, sw, sh);
+
+        // Use JPEG for better compression and OCR compatibility
+        const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+        const response = await fetch(croppedDataUrl);
+        const blob = await response.blob();
+        const baseName =
+          (selectedFile.name?.replace(/\.[^.]+$/, "") || "receipt") +
+          "-cropped.jpg";
+        const croppedFile = new File([blob], baseName, { type: "image/jpeg" });
+
+        setSelectedFile(croppedFile);
+        setHasCroppedImage(true);
+        setShowCropModal(false);
+      } finally {
+        // Clean up canvas to prevent memory leaks
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -1081,7 +1395,7 @@ export default function SplitBillTool() {
           : "Failed to crop the image. Please try again."
       );
     } finally {
-      setIsApplyingCrop(false);
+      setIsCropping(false);
     }
   };
 
@@ -1184,42 +1498,16 @@ export default function SplitBillTool() {
         )}
         <div className="max-w-4xl mx-auto space-y-2">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Pick a Kirby AI quality tier · higher tiers spend more tokens for
-            tougher receipts.
+            Kirby Ultra handles every receipt with 16,384 tokens of context so you
+            never need to manage tiers.
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(Object.keys(QUALITY_PRESETS) as KirbyQualityMode[]).map((mode) => {
-              const preset = QUALITY_PRESETS[mode];
-              const active = activeQualityMode === mode;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => updateQualityMode(mode)}
-                  className={cn(
-                    "rounded-2xl border-2 p-4 text-left transition-all duration-200 h-full",
-                    active
-                      ? "border-pink-500 bg-pink-50 shadow-lg"
-                      : "border-gray-200 hover:border-pink-300 bg-white/80"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="font-semibold">{preset.label}</p>
-                    {active && (
-                      <span className="text-xs font-semibold text-pink-600">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">{preset.description}</p>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-gray-400">
-            Current: {currentQualityPreset.label} ·{" "}
-            {currentQualityPreset.description}
-          </p>
+          {tokenUsage && (
+            <p className="text-xs text-gray-400">
+              Last OCR run via{" "}
+              {tokenUsage.provider === "azure" ? "Azure OpenAI" : "Google Gemini"}{" "}
+              used {describeTokenUsage(tokenUsage) || "an unknown number of tokens"}.
+            </p>
+          )}
         </div>
       </div>
 
@@ -1259,7 +1547,7 @@ export default function SplitBillTool() {
       {showSection("upload") && (
         <section
           className={cn(
-            "bg-white/80 dark:bg-gray-900/80 rounded-3xl border-2 border-pink-200 shadow-2xl p-6 space-y-6 backdrop-blur",
+            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-pink-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
             currentStep === "upload" ? "ring-4 ring-pink-200" : ""
           )}
         >
@@ -1367,7 +1655,7 @@ export default function SplitBillTool() {
                     event.stopPropagation();
                     analyzeReceipt();
                   }}
-                  disabled={!selectedFile}
+                  disabled={!selectedFile || isAnalyzing}
                 >
                   {loadingState ? (
                     <span className="flex items-center gap-2">
@@ -1410,7 +1698,7 @@ export default function SplitBillTool() {
       {showSection("review") && currentReceipt && (
         <section
           className={cn(
-            "bg-white/80 dark:bg-gray-900/80 rounded-3xl border-2 border-purple-200 shadow-2xl p-6 space-y-6 backdrop-blur",
+            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-purple-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
             currentStep === "review" ? "ring-4 ring-purple-200" : ""
           )}
         >
@@ -1502,6 +1790,11 @@ export default function SplitBillTool() {
                 >
                   <div>
                     <p className="font-semibold">{item.name}</p>
+                    {item.translatedName && (
+                      <p className="text-sm text-purple-600 mt-0.5">
+                        🌐 {item.translatedName}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400">Item #{index + 1}</p>
                   </div>
                   <p className="font-semibold text-purple-600">
@@ -1525,7 +1818,7 @@ export default function SplitBillTool() {
       {showSection("people") && (
         <section
           className={cn(
-            "bg-white/80 dark:bg-gray-900/80 rounded-3xl border-2 border-blue-200 shadow-2xl p-6 space-y-6 backdrop-blur",
+            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-blue-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
             currentStep === "people" ? "ring-4 ring-blue-200" : ""
           )}
         >
@@ -1621,7 +1914,7 @@ export default function SplitBillTool() {
       {showSection("assignment") && currentReceipt && people.length > 0 && (
         <section
           className={cn(
-            "bg-white/80 dark:bg-gray-900/80 rounded-3xl border-2 border-amber-200 shadow-2xl p-6 space-y-6 backdrop-blur",
+            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-amber-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
             currentStep === "assignment" ? "ring-4 ring-amber-200" : ""
           )}
         >
@@ -1660,6 +1953,11 @@ export default function SplitBillTool() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold">{item.name}</p>
+                        {item.translatedName && (
+                          <p className="text-xs text-amber-600">
+                            🌐 {item.translatedName}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-500">
                           {unique.length
                             ? `Assigned to ${unique.join(", ")}`
@@ -1737,7 +2035,7 @@ export default function SplitBillTool() {
       {showSection("results") && results && currentReceipt && (
         <section
           className={cn(
-            "bg-white/80 dark:bg-gray-900/80 rounded-3xl border-2 border-green-200 shadow-2xl p-6 space-y-6 backdrop-blur",
+            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-green-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
             currentStep === "results" ? "ring-4 ring-green-200" : ""
           )}
         >
@@ -1781,10 +2079,25 @@ export default function SplitBillTool() {
                       className="flex justify-between text-gray-600"
                     >
                       <span>
-                        {item.name}{" "}
-                        <span className="text-xs text-gray-400">
-                          ({item.percentage.toFixed(1)}%)
-                        </span>
+                        {item.translatedName ? (
+                          <>
+                            {item.translatedName}{" "}
+                            <span className="text-xs text-gray-400">
+                              ({item.name})
+                            </span>
+                            {" "}
+                            <span className="text-xs text-gray-400">
+                              ({item.percentage.toFixed(1)}%)
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {item.name}{" "}
+                            <span className="text-xs text-gray-400">
+                              ({item.percentage.toFixed(1)}%)
+                            </span>
+                          </>
+                        )}
                       </span>
                       <span className="font-semibold">
                         {formatCurrency(item.price)}
@@ -1842,8 +2155,8 @@ export default function SplitBillTool() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={exportResults}>
-                Export summary
+              <Button variant="outline" onClick={shareResults}>
+                Share bill
               </Button>
               <Button onClick={handleStartOver}>Start another receipt</Button>
             </div>
@@ -1949,9 +2262,9 @@ export default function SplitBillTool() {
                 </Button>
                 <Button
                   onClick={handleApplyCrop}
-                  disabled={!isCropSelectionValid || isApplyingCrop}
+                  disabled={!isCropSelectionValid || isCropping}
                 >
-                  {isApplyingCrop ? (
+                  {isCropping ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Cropping…
@@ -1982,102 +2295,146 @@ export default function SplitBillTool() {
             </p>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="endpoint">Endpoint</Label>
-                <Input
-                  id="endpoint"
-                  placeholder="https://kirby-ai.yourdomain.com"
-                  value={configDraft.endpoint}
-                  onChange={(e) =>
-                    setConfigDraft((prev) => ({
-                      ...prev,
-                      endpoint: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  placeholder="Enter your Kirby AI key"
-                  value={configDraft.apiKey}
-                  onChange={(e) =>
-                    setConfigDraft((prev) => ({
-                      ...prev,
-                      apiKey: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="apiVersion">API Version</Label>
-                  <Input
-                    id="apiVersion"
-                    value={configDraft.apiVersion}
-                    onChange={(e) =>
-                      setConfigDraft((prev) => ({
-                        ...prev,
-                        apiVersion: e.target.value,
-                      }))
-                    }
-                  />
+                <Label>AI Provider</Label>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {(
+                    [
+                      {
+                        id: "azure",
+                        label: "Azure OpenAI",
+                        description: "Use your Azure endpoint + key",
+                      },
+                      {
+                        id: "gemini",
+                        label: "Google Gemini",
+                        description: "Use Gemini API key",
+                      },
+                    ] as { id: KirbyProvider; label: string; description: string }[]
+                  ).map((option) => (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant={
+                        configDraft.provider === option.id ? "default" : "outline"
+                      }
+                      onClick={() =>
+                        setConfigDraft((prev) => ({
+                          ...prev,
+                          provider: option.id,
+                        }))
+                      }
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="deployment">Deployment name</Label>
-                  <Input
-                    id="deployment"
-                    value={configDraft.deployment}
-                    onChange={(e) =>
-                      setConfigDraft((prev) => ({
-                        ...prev,
-                        deployment: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Analysis quality</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Higher tiers consume more Kirby credits but improve OCR on
-                  complex receipts.
+                <p className="text-xs text-gray-500 mt-2">
+                  Choose Azure for GPT-5-mini or Gemini for Google&apos;s vision-enabled model.
                 </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {(Object.keys(QUALITY_PRESETS) as KirbyQualityMode[]).map(
-                    (mode) => {
-                      const preset = QUALITY_PRESETS[mode];
-                      const active = configDraft.qualityMode === mode;
-                      return (
-                        <button
-                          type="button"
-                          key={`config-${mode}`}
-                          onClick={() =>
-                            setConfigDraft((prev) => ({
-                              ...prev,
-                              qualityMode: mode,
-                            }))
-                          }
-                          className={cn(
-                            "rounded-2xl border-2 p-3 text-left transition-all duration-200",
-                            active
-                              ? "border-pink-500 bg-pink-50 shadow"
-                              : "border-gray-200 hover:border-pink-300"
-                          )}
-                        >
-                          <p className="text-sm font-semibold">
-                            {preset.label}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Up to {preset.maxTokens.toLocaleString()} tokens
-                          </p>
-                        </button>
-                      );
-                    }
-                  )}
-                </div>
               </div>
+
+              {configDraft.provider !== "gemini" && (
+                <>
+                  <div>
+                    <Label htmlFor="endpoint">Azure Endpoint</Label>
+                    <Input
+                      id="endpoint"
+                      placeholder="https://your-resource.openai.azure.com"
+                      value={configDraft.endpoint}
+                      onChange={(e) =>
+                        setConfigDraft((prev) => ({
+                          ...prev,
+                          endpoint: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="apiKey">Azure API Key</Label>
+                    <Input
+                      id="apiKey"
+                      type="password"
+                      placeholder="Enter your Azure OpenAI key"
+                      value={configDraft.apiKey}
+                      onChange={(e) =>
+                        setConfigDraft((prev) => ({
+                          ...prev,
+                          apiKey: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label htmlFor="apiVersion">API Version</Label>
+                      <Input
+                        id="apiVersion"
+                        value={configDraft.apiVersion}
+                        onChange={(e) =>
+                          setConfigDraft((prev) => ({
+                            ...prev,
+                            apiVersion: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="deployment">Deployment name</Label>
+                      <Input
+                        id="deployment"
+                        value={configDraft.deployment}
+                        onChange={(e) =>
+                          setConfigDraft((prev) => ({
+                            ...prev,
+                            deployment: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {configDraft.provider === "gemini" && (
+                <>
+                  <div>
+                    <Label htmlFor="geminiKey">Gemini API Key</Label>
+                    <Input
+                      id="geminiKey"
+                      type="password"
+                      placeholder="Enter your Gemini API key"
+                      value={configDraft.geminiApiKey}
+                      onChange={(e) =>
+                        setConfigDraft((prev) => ({
+                          ...prev,
+                          geminiApiKey: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="geminiModel">Gemini Model</Label>
+                    <select
+                      id="geminiModel"
+                      className="w-full p-3 rounded-full border-2 border-pink-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                      value={configDraft.geminiModel}
+                      onChange={(e) =>
+                        setConfigDraft((prev) => ({
+                          ...prev,
+                          geminiModel: e.target.value,
+                        }))
+                      }
+                    >
+                      {GEMINI_MODELS.map((model) => (
+                        <option key={model.value} value={model.value}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
             </div>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowConfigModal(false)}>
@@ -2157,6 +2514,11 @@ function AssignmentModal({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold">{item.name}</h3>
+            {item.translatedName && (
+              <p className="text-sm text-amber-600 mt-1">
+                🌐 {item.translatedName}
+              </p>
+            )}
             <p className="text-sm text-gray-500">
               {formatCurrency(item.total)} · Assign people & percentages
             </p>

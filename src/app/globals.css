@@ -8,9 +8,8 @@
 body {
   font-family: 'Comfortaa', 'Quicksand', 'Varela Round', system-ui, sans-serif;
   font-weight: 500;
-  background: linear-gradient(135deg, #FFE4F3 0%, #FFD6EC 25%, #FFC4E8 50%, #FFE4F3 75%, #FFD6EC 100%);
-  background-size: 400% 400%;
-  animation: dreamlandGradient 15s ease infinite;
+  /* Simplified background: removed infinite gradient animation */
+  background: linear-gradient(135deg, #FFE4F3 0%, #FFD6EC 50%, #FFC4E8 100%);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -43,13 +42,10 @@ body::after {
   pointer-events: none;
   z-index: 0;
   animation: floatPattern 20s linear infinite;
+  will-change: transform;
 }
 
-@keyframes dreamlandGradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+/* Removed dreamlandGradient keyframes */
 
 @keyframes floatPattern {
   0% { transform: translate(0, 0); }
@@ -97,18 +93,22 @@ body::after {
   
   .kirby-float {
     animation: float 4s ease-in-out infinite;
+    will-change: transform;
   }
   
   .kirby-bounce {
     animation: bounce 2s ease-in-out infinite;
+    will-change: transform;
   }
   
   .kirby-star-spin {
     animation: starSpin 3s linear infinite;
+    will-change: transform;
   }
   
   .kirby-cloud-float {
     animation: cloudFloat 6s ease-in-out infinite;
+    will-change: transform;
   }
   
   .kirby-pop-in {
@@ -117,6 +117,7 @@ body::after {
   
   .animate-spin-slow {
     animation: spin-slow 8s linear infinite;
+    will-change: transform;
   }
 }
 
@@ -215,7 +216,8 @@ body::after {
   }
   
   .kirby-card {
-    @apply bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] border-4 border-pink-300 dark:border-pink-700 transition-all duration-300 hover:scale-[1.02] hover:rotate-[0.5deg] relative overflow-hidden;
+    /* Reduced backdrop-blur from default to sm for performance */
+    @apply bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-[2rem] border-4 border-pink-300 dark:border-pink-700 transition-all duration-300 hover:scale-[1.02] hover:rotate-[0.5deg] relative overflow-hidden;
   }
   
   .kirby-card::before {
@@ -288,7 +290,7 @@ body::after {
   }
   
   .kirby-input {
-    @apply rounded-2xl border-3 border-pink-300 dark:border-pink-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 focus:outline-none focus:ring-4 focus:ring-pink-400 focus:border-pink-400 transition-all duration-200 placeholder:text-pink-300 dark:placeholder:text-pink-700;
+    @apply rounded-2xl border-3 border-pink-300 dark:border-pink-700 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-4 py-3 focus:outline-none focus:ring-4 focus:ring-pink-400 focus:border-pink-400 transition-all duration-200 placeholder:text-pink-300 dark:placeholder:text-pink-700;
   }
   
   .kirby-star {
@@ -356,6 +358,7 @@ body::after {
   
   button:hover {
     animation: buttonWiggle 0.5s ease infinite;
+    will-change: transform;
   }
   
   button:active {
@@ -445,6 +448,7 @@ body::after {
   position: absolute;
   font-size: 30px;
   animation: starSpin 4s linear infinite;
+  will-change: transform;
 }
 
 .cloud-decoration {
@@ -457,4 +461,5 @@ body::after {
   z-index: 1;
   opacity: 0.4;
   animation: cloudFloat 8s ease-in-out infinite;
+  will-change: transform;
 }
