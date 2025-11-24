@@ -822,10 +822,10 @@ export default function SplitBillTool() {
               ],
             },
           ],
-        generationConfig: {
-          temperature: ULTRA_PRESET.temperature,
-          maxOutputTokens: ULTRA_PRESET.maxTokens,
-        },
+          generationConfig: {
+            temperature: ULTRA_PRESET.temperature,
+            maxOutputTokens: ULTRA_PRESET.maxTokens,
+          },
         }),
         signal: controller.signal,
       });
@@ -1050,17 +1050,9 @@ export default function SplitBillTool() {
       return;
     }
 
-    const unassigned = currentReceipt.items.filter(
-      (item) => !item.assignedTo || item.assignedTo.length === 0
-    );
+    // Unassigned items check removed to allow partial splitting
+    // The unassigned items will be displayed in the results summary
 
-    if (unassigned.length) {
-      setErrorMessage(
-        `Some items are unassigned (${unassigned.length}). Assign everyone before calculating.`
-      );
-      setCurrentStep("assignment");
-      return;
-    }
 
     const invalidPercentages = currentReceipt.items.filter((item) => {
       const unique = Array.from(new Set(item.assignedTo ?? []));
@@ -1151,13 +1143,14 @@ export default function SplitBillTool() {
   };
 
   const buildResultsSummary = (peopleShares: PersonShare[]) => {
+    if (!currentReceipt) return "";
     const lines = [
       "SplitBill Results",
       "",
       ...peopleShares.flatMap((person) => [
         `${person.name} - ${formatCurrency(person.total)}`,
         ...person.items.map((item) => {
-          const displayName = item.translatedName 
+          const displayName = item.translatedName
             ? `${item.translatedName} (${item.name})`
             : item.name;
           return `  • ${displayName} (${item.percentage.toFixed(1)}%) -> ${formatCurrency(
@@ -1178,6 +1171,31 @@ export default function SplitBillTool() {
         peopleShares.reduce((sum, person) => sum + person.total, 0)
       )}`,
     ];
+
+
+    const unassignedItems = currentReceipt.items.filter(
+      (item) => !item.assignedTo || item.assignedTo.length === 0
+    );
+
+    if (unassignedItems.length > 0) {
+      const unassignedTotal = unassignedItems.reduce((sum, item) => sum + item.total, 0);
+      lines.push(
+        "",
+        "⚠️ Unassigned Items:",
+        ...unassignedItems.map(
+          (item) => `  • ${item.name} -> ${formatCurrency(item.total)}`
+        ),
+        `  Unassigned Total: ${formatCurrency(unassignedTotal)}`
+      );
+    }
+
+    lines.push(
+      "",
+      `Grand Total (Assigned): ${formatCurrency(
+        peopleShares.reduce((sum, person) => sum + person.total, 0)
+      )}`
+    );
+
     return lines.join("\n");
   };
 
@@ -1402,42 +1420,42 @@ export default function SplitBillTool() {
   const polygonForRendering = getActivePolygon();
   const polygonBounds = polygonForRendering.length
     ? {
-        minU: Math.min(...polygonForRendering.map((point) => point.u)),
-        maxU: Math.max(...polygonForRendering.map((point) => point.u)),
-        minV: Math.min(...polygonForRendering.map((point) => point.v)),
-        maxV: Math.max(...polygonForRendering.map((point) => point.v)),
-      }
+      minU: Math.min(...polygonForRendering.map((point) => point.u)),
+      maxU: Math.max(...polygonForRendering.map((point) => point.u)),
+      minV: Math.min(...polygonForRendering.map((point) => point.v)),
+      maxV: Math.max(...polygonForRendering.map((point) => point.v)),
+    }
     : null;
   const displayPolygonPoints =
     cropAreaSize.width > 0 && cropAreaSize.height > 0
       ? polygonForRendering.map((point) => ({
-          x: point.u * cropAreaSize.width,
-          y: point.v * cropAreaSize.height,
-        }))
+        x: point.u * cropAreaSize.width,
+        y: point.v * cropAreaSize.height,
+      }))
       : [];
   const selectionDisplayInfo =
     polygonBounds && cropAreaSize.width > 0 && cropAreaSize.height > 0
       ? {
-          width: Math.round(
-            (polygonBounds.maxU - polygonBounds.minU) * cropAreaSize.width
-          ),
-          height: Math.round(
-            (polygonBounds.maxV - polygonBounds.minV) * cropAreaSize.height
-          ),
-        }
+        width: Math.round(
+          (polygonBounds.maxU - polygonBounds.minU) * cropAreaSize.width
+        ),
+        height: Math.round(
+          (polygonBounds.maxV - polygonBounds.minV) * cropAreaSize.height
+        ),
+      }
       : null;
   const selectionNaturalInfo =
     polygonBounds && cropImageRef.current
       ? {
-          width: Math.round(
-            (polygonBounds.maxU - polygonBounds.minU) *
-              cropImageRef.current.naturalWidth
-          ),
-          height: Math.round(
-            (polygonBounds.maxV - polygonBounds.minV) *
-              cropImageRef.current.naturalHeight
-          ),
-        }
+        width: Math.round(
+          (polygonBounds.maxU - polygonBounds.minU) *
+          cropImageRef.current.naturalWidth
+        ),
+        height: Math.round(
+          (polygonBounds.maxV - polygonBounds.minV) *
+          cropImageRef.current.naturalHeight
+        ),
+      }
       : null;
   const isCropSelectionValid =
     !!selectionNaturalInfo &&
@@ -1527,8 +1545,8 @@ export default function SplitBillTool() {
                 active
                   ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white border-pink-400"
                   : completed
-                  ? "bg-white dark:bg-gray-900 border-pink-300 text-pink-600"
-                  : "bg-white/70 border-gray-200 text-gray-500",
+                    ? "bg-white dark:bg-gray-900 border-pink-300 text-pink-600"
+                    : "bg-white/70 border-gray-200 text-gray-500",
                 clickable ? "cursor-pointer" : "cursor-not-allowed opacity-60"
               )}
             >
@@ -1616,63 +1634,63 @@ export default function SplitBillTool() {
                     className="rounded-2xl shadow-lg object-contain border-2 border-white bg-white"
                   />
                 </div>
-              <div className="flex flex-wrap gap-3 justify-center">
-                <Button
-                  variant="outline"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleResetUpload();
-                  }}
-                >
-                  Remove
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (!previewUrl || !selectedFile) {
-                      setErrorMessage("Upload a receipt before cropping.");
-                      return;
-                    }
-                    setShowCropModal(true);
-                  }}
-                >
-                  Crop receipt
-                </Button>
-                {hasCroppedImage && (
+                <div className="flex flex-wrap gap-3 justify-center">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     onClick={(event) => {
                       event.stopPropagation();
-                      handleResetCrop();
+                      handleResetUpload();
                     }}
                   >
-                    Reset crop
+                    Remove
                   </Button>
-                )}
-                <Button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    analyzeReceipt();
-                  }}
-                  disabled={!selectedFile || isAnalyzing}
-                >
-                  {loadingState ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Analyzing
-                    </span>
-                  ) : (
-                    "Analyze Receipt"
+                  <Button
+                    variant="secondary"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (!previewUrl || !selectedFile) {
+                        setErrorMessage("Upload a receipt before cropping.");
+                        return;
+                      }
+                      setShowCropModal(true);
+                    }}
+                  >
+                    Crop receipt
+                  </Button>
+                  {hasCroppedImage && (
+                    <Button
+                      variant="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleResetCrop();
+                      }}
+                    >
+                      Reset crop
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      analyzeReceipt();
+                    }}
+                    disabled={!selectedFile || isAnalyzing}
+                  >
+                    {loadingState ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Analyzing
+                      </span>
+                    ) : (
+                      "Analyze Receipt"
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-400 text-center w-full">
+                  {hasCroppedImage
+                    ? "Cropped version in use. You can re-open Crop to adjust."
+                    : "Tip: Tap Crop to outline the receipt and remove background clutter for better OCR."}
+                </p>
               </div>
-              <p className="text-xs text-gray-400 text-center w-full">
-                {hasCroppedImage
-                  ? "Cropped version in use. You can re-open Crop to adjust."
-                  : "Tip: Tap Crop to outline the receipt and remove background clutter for better OCR."}
-              </p>
-            </div>
             ) : (
               <div className="space-y-3">
                 <FileImage className="w-16 h-16 text-pink-200 mx-auto" />
@@ -2010,11 +2028,7 @@ export default function SplitBillTool() {
               <Button
                 onClick={calculateSplit}
                 className="w-full"
-                disabled={
-                  !currentReceipt.items.every(
-                    (item) => item.assignedTo && item.assignedTo.length > 0
-                  )
-                }
+                disabled={people.length === 0}
               >
                 Calculate fair split
               </Button>
@@ -2144,21 +2158,54 @@ export default function SplitBillTool() {
             ))}
           </div>
 
-          <div className="rounded-3xl border-2 border-green-100 bg-white p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="text-sm text-gray-500">All done!</p>
-              <p className="text-2xl font-black">
-                Total paid ·{" "}
-                {formatCurrency(
-                  results.reduce((sum, person) => sum + person.total, 0)
-                )}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={shareResults}>
-                Share bill
-              </Button>
-              <Button onClick={handleStartOver}>Start another receipt</Button>
+          <div className="rounded-3xl border-2 border-green-100 bg-white p-5 flex flex-col gap-4">
+            {/* Unassigned Items Section */}
+            {(() => {
+              const unassignedItems = currentReceipt.items.filter(
+                (item) => !item.assignedTo || item.assignedTo.length === 0
+              );
+
+              if (unassignedItems.length === 0) return null;
+
+              const unassignedTotal = unassignedItems.reduce((sum, item) => sum + item.total, 0);
+
+              return (
+                <div className="mb-4 p-4 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200">
+                  <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2">
+                    <span>⚠️</span> Unassigned Items
+                  </h3>
+                  <div className="space-y-2 text-sm text-gray-400">
+                    {unassignedItems.map((item, index) => (
+                      <div key={`unassigned-${index}`} className="flex justify-between">
+                        <span>{item.name}</span>
+                        <span>{formatCurrency(item.total)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-semibold">
+                      <span>Unassigned Total</span>
+                      <span>{formatCurrency(unassignedTotal)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="text-sm text-gray-500">All done!</p>
+                <p className="text-2xl font-black">
+                  Total paid ·{" "}
+                  {formatCurrency(
+                    results.reduce((sum, person) => sum + person.total, 0)
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={shareResults}>
+                  Share bill
+                </Button>
+                <Button onClick={handleStartOver}>Start another receipt</Button>
+              </div>
             </div>
           </div>
         </section>
