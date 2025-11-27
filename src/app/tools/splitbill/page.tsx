@@ -65,6 +65,8 @@ type ReceiptData = {
   restaurant: string;
   address: string;
   date: string;
+  currency: string;
+  exchangeRate: number;
   items: ReceiptItem[];
   subtotal: number;
   serviceCharge: number;
@@ -98,6 +100,7 @@ type PersonShare = {
   extraCharges: ExtraCharge[];
   discount: number;
   total: number;
+  totalIdr?: number;
 };
 
 type CropPoint = {
@@ -153,7 +156,7 @@ const ULTRA_PRESET = {
 
 const RECEIPT_PROMPT = [
   'You are a receipt parsing and reconstruction expert. Azure OCR may break lines, merge words, or misread characters. Clean the OCR text and extract billing data, returning ONLY a minified JSON with this structure:',
-  '{"restaurant":"","address":"","date":"","items":[{"name":"","translatedName":"","price":0}],"subtotal":0,"serviceCharge":0,"tax":0,"discount":0,"extraCharges":[{"name":"","amount":0}],"total":0}',
+  '{"restaurant":"","address":"","date":"","currency":"IDR","items":[{"name":"","translatedName":"","price":0}],"subtotal":0,"serviceCharge":0,"tax":0,"discount":0,"extraCharges":[{"name":"","amount":0}],"total":0}',
   '',
   'Rules:',
   '- Keep full item names (sizes, variants, modifiers). Remove only leading quantities (e.g., "2x").',
@@ -164,6 +167,7 @@ const RECEIPT_PROMPT = [
   '- Capture service charges, PB1/Pajak/PPN/VAT/GST or similar taxes.',
   '- Record all discounts in the "discount" field. If the amount is negative, store it as-is; if only a percentage appears, store 0. Add multiple discounts together.',
   '- Extra charges include rounding, packaging, delivery, surcharges, etc., each as {"name":"","amount":number}. Negative values are allowed.',
+  '- Detect the currency (e.g., IDR, USD, JPY, SGD) and set the "currency" field. Default to "IDR" if unknown.',
   '- For Indonesian Rupiah, dots/commas usually indicate thousands (145.000 => 145000) unless the format clearly shows decimals.',
   '- Convert dates to YYYY-MM-DD when possible; otherwise return an empty string.',
   '- If data is missing, use empty string or 0.',
@@ -212,13 +216,14 @@ const COLOR_POOL = [
   "#fed6e3",
 ];
 
-const currencyFormatter = new Intl.NumberFormat("id-ID", {
-  style: "currency",
-  currency: "IDR",
-  minimumFractionDigits: 0,
-});
-
-const formatCurrency = (amount: number) => currencyFormatter.format(amount);
+const formatCurrency = (amount: number, currency = "IDR") => {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
 
 const formatTokenCount = (value?: number) =>
   value != null ? value.toLocaleString() : "unknown";
@@ -388,10 +393,15 @@ const parseReceipt = (data: any): ReceiptData => {
     extraCharges.reduce((sum, charge) => sum + charge.amount, 0) +
     discount;
 
+  const currency = (data?.currency ?? "IDR").toUpperCase();
+  const exchangeRate = 1; // Default to 1, user can edit
+
   return {
     restaurant: (data?.restaurant ?? "").trim(),
     address: (data?.address ?? "").trim(),
     date: (data?.date ?? "").trim(),
+    currency,
+    exchangeRate,
     items,
     subtotal,
     serviceCharge,
@@ -1138,6 +1148,13 @@ export default function SplitBillTool() {
       });
     }
 
+    // Calculate IDR equivalent if needed
+    if (currentReceipt.currency !== "IDR" && currentReceipt.exchangeRate) {
+      peopleShares.forEach((person) => {
+        person.totalIdr = person.total * currentReceipt.exchangeRate;
+      });
+    }
+
     setResults(peopleShares);
     setCurrentStep("results");
   };
@@ -1148,27 +1165,29 @@ export default function SplitBillTool() {
       "SplitBill Results",
       "",
       ...peopleShares.flatMap((person) => [
-        `${person.name} - ${formatCurrency(person.total)}`,
+        `${person.name} - ${formatCurrency(person.total, currentReceipt.currency)}${person.totalIdr ? ` (≈ ${formatCurrency(person.totalIdr)})` : ""}`,
         ...person.items.map((item) => {
           const displayName = item.translatedName
             ? `${item.translatedName} (${item.name})`
             : item.name;
           return `  • ${displayName} (${item.percentage.toFixed(1)}%) -> ${formatCurrency(
-            item.price
+            item.price,
+            currentReceipt.currency
           )}`;
         }),
-        `  Service Charge: ${formatCurrency(person.serviceCharge)}`,
-        `  Tax: ${formatCurrency(person.tax)}`,
+        `  Service Charge: ${formatCurrency(person.serviceCharge, currentReceipt.currency)}`,
+        `  Tax: ${formatCurrency(person.tax, currentReceipt.currency)}`,
         ...person.extraCharges.map(
-          (charge) => `  ${charge.name}: ${formatCurrency(charge.amount)}`
+          (charge) => `  ${charge.name}: ${formatCurrency(charge.amount, currentReceipt.currency)}`
         ),
         ...(person.discount !== 0
-          ? [`  Discount: ${formatCurrency(person.discount)}`]
+          ? [`  Discount: ${formatCurrency(person.discount, currentReceipt.currency)}`]
           : []),
         "",
       ]),
       `Grand Total: ${formatCurrency(
-        peopleShares.reduce((sum, person) => sum + person.total, 0)
+        peopleShares.reduce((sum, person) => sum + person.total, 0),
+        currentReceipt.currency
       )}`,
     ];
 
@@ -1183,9 +1202,9 @@ export default function SplitBillTool() {
         "",
         "⚠️ Unassigned Items:",
         ...unassignedItems.map(
-          (item) => `  • ${item.name} -> ${formatCurrency(item.total)}`
+          (item) => `  • ${item.name} -> ${formatCurrency(item.total, currentReceipt.currency)}`
         ),
-        `  Unassigned Total: ${formatCurrency(unassignedTotal)}`
+        `  Unassigned Total: ${formatCurrency(unassignedTotal, currentReceipt.currency)}`
       );
     }
 
@@ -1752,6 +1771,49 @@ export default function SplitBillTool() {
                   Parsed via {ocrMeta.method}
                 </p>
               )}
+
+              <div className="pt-4 border-t border-purple-200/50 space-y-3">
+                <div className="flex gap-3">
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="currency" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Currency</Label>
+                    <Input
+                      id="currency"
+                      value={currentReceipt.currency}
+                      onChange={(e) =>
+                        setCurrentReceipt({
+                          ...currentReceipt,
+                          currency: e.target.value.toUpperCase(),
+                        })
+                      }
+                      className="bg-white/50 border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      placeholder="IDR, USD..."
+                    />
+                  </div>
+                  {currentReceipt.currency !== "IDR" && (
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="exchangeRate" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate to IDR</Label>
+                      <Input
+                        id="exchangeRate"
+                        type="number"
+                        value={currentReceipt.exchangeRate}
+                        onChange={(e) =>
+                          setCurrentReceipt({
+                            ...currentReceipt,
+                            exchangeRate: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="bg-white/50 border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                        placeholder="15000"
+                      />
+                    </div>
+                  )}
+                </div>
+                {currentReceipt.currency !== "IDR" && (
+                  <p className="text-xs text-purple-600">
+                    1 {currentReceipt.currency} = {formatCurrency(currentReceipt.exchangeRate)}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="rounded-3xl border-2 border-purple-100 bg-white p-5 space-y-3">
@@ -1759,35 +1821,35 @@ export default function SplitBillTool() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Items total</span>
-                  <span>{formatCurrency(currentReceipt.subtotal)}</span>
+                  <span>{formatCurrency(currentReceipt.subtotal, currentReceipt.currency)}</span>
                 </div>
                 {currentReceipt.serviceCharge > 0 && (
                   <div className="flex justify-between">
                     <span>Service charge</span>
-                    <span>{formatCurrency(currentReceipt.serviceCharge)}</span>
+                    <span>{formatCurrency(currentReceipt.serviceCharge, currentReceipt.currency)}</span>
                   </div>
                 )}
                 {currentReceipt.tax > 0 && (
                   <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>{formatCurrency(currentReceipt.tax)}</span>
+                    <span>{formatCurrency(currentReceipt.tax, currentReceipt.currency)}</span>
                   </div>
                 )}
                 {currentReceipt.extraCharges.map((charge) => (
                   <div className="flex justify-between" key={charge.name}>
                     <span>{charge.name}</span>
-                    <span>{formatCurrency(charge.amount)}</span>
+                    <span>{formatCurrency(charge.amount, currentReceipt.currency)}</span>
                   </div>
                 ))}
                 {currentReceipt.discount !== 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>
-                    <span>{formatCurrency(currentReceipt.discount)}</span>
+                    <span>{formatCurrency(currentReceipt.discount, currentReceipt.currency)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-lg pt-3 border-t border-purple-100 mt-2">
                   <span>Total</span>
-                  <span>{formatCurrency(currentReceipt.total)}</span>
+                  <span>{formatCurrency(currentReceipt.total, currentReceipt.currency)}</span>
                 </div>
                 {!currentReceipt.isValid && (
                   <p className="text-xs text-amber-600">
@@ -1816,7 +1878,7 @@ export default function SplitBillTool() {
                     <p className="text-xs text-gray-400">Item #{index + 1}</p>
                   </div>
                   <p className="font-semibold text-purple-600">
-                    {formatCurrency(item.total)}
+                    {formatCurrency(item.total, currentReceipt.currency)}
                   </p>
                 </div>
               ))}
@@ -1984,7 +2046,7 @@ export default function SplitBillTool() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">
-                          {formatCurrency(item.total)}
+                          {formatCurrency(item.total, currentReceipt.currency)}
                         </p>
                         {unique.length > 0 && (
                           <p className="text-xs text-gray-500">
@@ -2016,7 +2078,7 @@ export default function SplitBillTool() {
                       </p>
                     </div>
                     <p className="font-semibold text-amber-600">
-                      {formatCurrency(summary.subtotal)}
+                      {formatCurrency(summary.subtotal, currentReceipt.currency)}
                     </p>
                   </div>
                 ))
@@ -2081,7 +2143,12 @@ export default function SplitBillTool() {
                   <div>
                     <p className="font-semibold text-lg">{person.name}</p>
                     <p className="text-sm text-gray-500">
-                      Pays {formatCurrency(person.total)}
+                      Pays {formatCurrency(person.total, currentReceipt.currency)}
+                      {person.totalIdr && (
+                        <span className="block text-xs text-gray-400">
+                          ≈ {formatCurrency(person.totalIdr)}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -2151,8 +2218,14 @@ export default function SplitBillTool() {
                   )}
                   <div className="flex justify-between font-bold text-lg pt-2 border-t border-green-100">
                     <span>Total</span>
-                    <span>{formatCurrency(person.total)}</span>
+                    <span>{formatCurrency(person.total, currentReceipt.currency)}</span>
                   </div>
+                  {person.totalIdr && (
+                    <div className="flex justify-between text-sm text-gray-500 pt-1">
+                      <span>In IDR</span>
+                      <span>{formatCurrency(person.totalIdr)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -2178,12 +2251,12 @@ export default function SplitBillTool() {
                     {unassignedItems.map((item, index) => (
                       <div key={`unassigned-${index}`} className="flex justify-between">
                         <span>{item.name}</span>
-                        <span>{formatCurrency(item.total)}</span>
+                        <span>{formatCurrency(item.total, currentReceipt.currency)}</span>
                       </div>
                     ))}
                     <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-semibold">
                       <span>Unassigned Total</span>
-                      <span>{formatCurrency(unassignedTotal)}</span>
+                      <span>{formatCurrency(unassignedTotal, currentReceipt.currency)}</span>
                     </div>
                   </div>
                 </div>

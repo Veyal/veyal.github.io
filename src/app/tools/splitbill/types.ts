@@ -36,6 +36,8 @@ export type ReceiptData = {
   restaurant: string;
   address: string;
   date: string;
+  currency: string;
+  exchangeRate: number;
   items: ReceiptItem[];
   subtotal: number;
   serviceCharge: number;
@@ -68,6 +70,7 @@ export type PersonShare = {
   extraCharges: ExtraCharge[];
   discount: number;
   total: number;
+  totalIdr?: number;
 };
 
 export type Step = "upload" | "review" | "people" | "assignment" | "results";
