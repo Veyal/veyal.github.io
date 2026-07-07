@@ -34,13 +34,13 @@ export default function Encryptor() {
   const processEncrypt = () => {
     try {
       if (!leftText.trim()) {
-        setError('Please enter text to encrypt')
+        setError('Enter text to encrypt.')
         setRightText('')
         return
       }
 
       if (!key.trim()) {
-        setError('Please enter an encryption key')
+        setError('Enter an encryption key.')
         setRightText('')
         return
       }
@@ -48,7 +48,7 @@ export default function Encryptor() {
       const requiresIV = algorithms.find(a => a.value === algorithm)?.requiresIV
 
       if (requiresIV && !iv.trim()) {
-        setError('This mode requires an IV')
+        setError('This mode requires an IV.')
         setRightText('')
         return
       }
@@ -67,7 +67,7 @@ export default function Encryptor() {
         try {
           inputText = CryptoJS.enc.Base64.parse(leftText).toString(CryptoJS.enc.Utf8)
         } catch (_e) {
-          setError('Invalid Base64 input')
+          setError('Invalid Base64 input.')
           setRightText('')
           return
         }
@@ -77,7 +77,7 @@ export default function Encryptor() {
       setRightText(result)
       setError('')
     } catch (_err) {
-      setError('An error occurred during encryption')
+      setError('Encryption failed.')
       setRightText('')
     }
   }
@@ -85,13 +85,13 @@ export default function Encryptor() {
   const processDecrypt = () => {
     try {
       if (!rightText.trim()) {
-        setError('Please enter text to decrypt')
+        setError('Enter text to decrypt.')
         setLeftText('')
         return
       }
 
       if (!key.trim()) {
-        setError('Please enter an encryption key')
+        setError('Enter an encryption key.')
         setLeftText('')
         return
       }
@@ -99,7 +99,7 @@ export default function Encryptor() {
       const requiresIV = algorithms.find(a => a.value === algorithm)?.requiresIV
 
       if (requiresIV && !iv.trim()) {
-        setError('This mode requires an IV')
+        setError('This mode requires an IV.')
         setLeftText('')
         return
       }
@@ -118,7 +118,7 @@ export default function Encryptor() {
         try {
           inputText = CryptoJS.enc.Hex.stringify(CryptoJS.enc.Base64.parse(rightText))
         } catch (_e) {
-          setError('Invalid Base64 input')
+          setError('Invalid Base64 input.')
           setLeftText('')
           return
         }
@@ -132,11 +132,11 @@ export default function Encryptor() {
         setLeftText(result)
         setError('')
       } catch (_e) {
-        setError('Failed to decrypt. Check your key, IV, and input.')
+        setError('Decryption failed. Check the key, IV, and input.')
         setLeftText('')
       }
     } catch (_err) {
-      setError('An error occurred during decryption')
+      setError('Decryption failed.')
       setLeftText('')
     }
   }
@@ -144,87 +144,100 @@ export default function Encryptor() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        alert('Text copied to clipboard!')
+        alert('Copied to clipboard.')
       })
       .catch(err => {
         console.error('Failed to copy: ', err)
       })
   }
 
+  const textareaClass =
+    "field-input h-[300px] resize-none font-mono text-sm"
+
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6">
-      <h1 className="text-4xl font-black mb-8 text-center bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">AES Encryptor/Decryptor</h1>
+    <div>
+      <header>
+        <p className="mono-label">🔐 secret scrambler</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Encryptor</h1>
+        <p className="mt-2 text-sm text-foreground/60">
+          Scramble text with AES and friends. Unscramble it too — everything stays in your browser, pinky promise.
+        </p>
+      </header>
 
-      <div className="space-y-6 mb-6">
-        <div>
-          <Label htmlFor="algorithm">AES Mode</Label>
-          <select
-            id="algorithm"
-            className="w-full p-3 rounded-full border-2 border-pink-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
-            value={algorithm}
-            onChange={(e) => setAlgorithm(e.target.value)}
-          >
-            {algorithms.map((a) => (
-              <option key={a.value} value={a.value}>{a.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="key">Encryption Key</Label>
-            <Input
-              id="key"
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Enter encryption key"
-              className="bg-white dark:bg-gray-800"
-            />
+      <section className="card-surface mt-8 p-5 sm:p-6">
+        <p className="mono-label mb-4">⚙️ settings</p>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="algorithm">AES mode</Label>
+            <select
+              id="algorithm"
+              className="field-input appearance-none font-mono"
+              value={algorithm}
+              onChange={(e) => setAlgorithm(e.target.value)}
+            >
+              {algorithms.map((a) => (
+                <option key={a.value} value={a.value}>{a.label}</option>
+              ))}
+            </select>
           </div>
 
-          {algorithms.find(a => a.value === algorithm)?.requiresIV && (
-            <div>
-              <Label htmlFor="iv">Initialization Vector (IV)</Label>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="key">Key</Label>
               <Input
-                id="iv"
+                id="key"
                 type="text"
-                value={iv}
-                onChange={(e) => setIv(e.target.value)}
-                placeholder="Enter IV"
-                className="bg-white dark:bg-gray-800"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="Your secret key"
+                className="font-mono"
               />
             </div>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {algorithms.find(a => a.value === algorithm)?.requiresIV && (
+              <div className="space-y-2">
+                <Label htmlFor="iv">Initialization vector (IV)</Label>
+                <Input
+                  id="iv"
+                  type="text"
+                  value={iv}
+                  onChange={(e) => setIv(e.target.value)}
+                  placeholder="IV"
+                  className="font-mono"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="base64-input"
               checked={useBase64Input}
               onChange={(e) => setUseBase64Input(e.target.checked)}
+              className="h-4 w-4 rounded border-2 border-foreground accent-[var(--candy-pink)]"
             />
             <Label htmlFor="base64-input">Input is Base64 encoded</Label>
           </div>
         </div>
-      </div>
+      </section>
 
       {error && (
-        <div className="bg-red-100 dark:bg-red-900/30 border-2 border-red-300 rounded-full px-4 py-2 mb-4 text-center text-red-600 dark:text-red-400 font-semibold">{error}</div>
+        <div className="mt-4 rounded-xl border-2 border-foreground bg-red-100 px-4 py-2.5 text-sm font-bold text-red-700">
+          😬 {error}
+        </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center h-6">
-            <Label htmlFor="plaintext">Plaintext</Label>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="card-surface space-y-4 p-5 sm:p-6">
+          <div className="flex h-8 items-center justify-between">
+            <Label htmlFor="plaintext" className="mono-label">📝 your text</Label>
             {leftText && (
               <Button
                 onClick={() => copyToClipboard(leftText)}
                 variant="outline"
                 size="sm"
-                className="flex items-center"
+                className="flex items-center gap-2"
               >
                 <CopyIcon className="h-4 w-4" />
                 Copy
@@ -233,23 +246,24 @@ export default function Encryptor() {
           </div>
           <textarea
             id="plaintext"
-            className="w-full h-[300px] p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className={textareaClass}
             value={leftText}
             onChange={(e) => setLeftText(e.target.value)}
-            placeholder="Enter text to encrypt..."
+            placeholder="Type or paste your secret message here…"
+            spellCheck={false}
           />
-          <Button 
+          <Button
             onClick={processEncrypt}
             className="w-full"
           >
             <LockIcon className="mr-2 h-4 w-4" />
-            Encrypt →
+            Scramble it
           </Button>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex justify-between items-center h-6">
-            <Label htmlFor="ciphertext">Ciphertext</Label>
+        <div className="card-surface space-y-4 p-5 sm:p-6">
+          <div className="flex h-8 items-center justify-between">
+            <Label htmlFor="ciphertext" className="mono-label">🔒 scrambled text</Label>
             {rightText && (
               <Button
                 onClick={() => copyToClipboard(rightText)}
@@ -264,17 +278,18 @@ export default function Encryptor() {
           </div>
           <textarea
             id="ciphertext"
-            className="w-full h-[300px] p-4 rounded-2xl border-2 border-pink-300 bg-white dark:bg-gray-800 resize-none font-mono focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className={textareaClass}
             value={rightText}
             onChange={(e) => setRightText(e.target.value)}
-            placeholder="Enter text to decrypt..."
+            placeholder="Paste the scrambled gibberish here…"
+            spellCheck={false}
           />
-          <Button 
+          <Button
             onClick={processDecrypt}
             className="w-full"
           >
             <UnlockIcon className="mr-2 h-4 w-4" />
-            ← Decrypt
+            Unscramble it
           </Button>
         </div>
       </div>

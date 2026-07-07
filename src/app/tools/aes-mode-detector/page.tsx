@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, CheckCircle, XCircle, Shield, Key, Search } from "lucide-react"
+import { CheckCircle, XCircle, Shield, Key, Search } from "lucide-react"
 import crypto from 'crypto-browserify'
 import { Buffer } from 'buffer'
 
@@ -248,239 +248,233 @@ export default function AESModeDetectorPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="kirby-title mb-4">
-            <Shield className="inline-block w-12 h-12 mr-4 text-pink-500" />
-            AES Mode Detector
-          </h1>
-          <p className="kirby-subtitle">Identify AES encryption mode from ciphertext and key</p>
-          <div className="mt-4">
-            <span className="game-badge">Educational Tool</span>
-            <span className="game-badge ml-2">Cryptography PoC</span>
-          </div>
-        </div>
+    <div>
+      <div className="mb-8">
+        <p className="mono-label">🕵️ cipher detective</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          AES Mode Detector
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Paste some ciphertext and let&apos;s figure out how it was encrypted. Detective work, but with math.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="kirby-card">
-            <CardHeader>
-              <CardTitle className="text-pink-600 dark:text-pink-400">
-                <Key className="inline-block w-5 h-5 mr-2" />
-                Input Parameters
-              </CardTitle>
-              <CardDescription>
-                Enter ciphertext and key to detect AES mode
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Cipher Format</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      variant={inputFormat === 'hex' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setInputFormat('hex')}
-                      className="kirby-button"
-                    >
-                      Hex
-                    </Button>
-                    <Button
-                      variant={inputFormat === 'base64' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setInputFormat('base64')}
-                      className="kirby-button"
-                    >
-                      Base64
-                    </Button>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label>Key Format</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      variant={keyFormat === 'hex' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setKeyFormat('hex')}
-                      className="kirby-button px-3"
-                    >
-                      Hex
-                    </Button>
-                    <Button
-                      variant={keyFormat === 'base64' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setKeyFormat('base64')}
-                      className="kirby-button px-3"
-                    >
-                      B64
-                    </Button>
-                    <Button
-                      variant={keyFormat === 'utf8' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setKeyFormat('utf8')}
-                      className="kirby-button px-3"
-                    >
-                      Text
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="ciphertext">Ciphertext</Label>
-                <textarea
-                  id="ciphertext"
-                  value={ciphertext}
-                  onChange={(e) => setCiphertext(e.target.value)}
-                  placeholder={inputFormat === 'hex' ? "Enter hex encoded ciphertext..." : "Enter base64 encoded ciphertext..."}
-                  className="w-full h-24 p-3 mt-2 rounded-2xl border-2 border-pink-300 dark:border-pink-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm font-mono text-sm"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="key">Secret Key</Label>
-                <Input
-                  id="key"
-                  type="text"
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  placeholder={keyFormat === 'hex' ? "Enter hex encoded key..." : keyFormat === 'base64' ? "Enter base64 encoded key..." : "Enter text/UTF-8 key..."}
-                  className="font-mono"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="iv">
-                  IV (Initialization Vector) - Optional
-                  <span className="text-xs text-gray-500 ml-2">Required for CBC, CFB, OFB, CTR modes</span>
-                </Label>
-                <Input
-                  id="iv"
-                  type="text"
-                  value={iv}
-                  onChange={(e) => setIv(e.target.value)}
-                  placeholder={inputFormat === 'hex' ? "Enter hex encoded IV (if available)..." : "Enter base64 encoded IV..."}
-                  className="font-mono"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={detectAESMode}
-                  disabled={!ciphertext || !key || isDetecting}
-                  className="kirby-button flex-1"
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  {isDetecting ? "Detecting..." : "Detect Mode"}
-                </Button>
-                <Button
-                  onClick={generateExample}
-                  variant="outline"
-                  className="kirby-button"
-                >
-                  Generate Example
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="kirby-card">
-            <CardHeader>
-              <CardTitle className="text-pink-600 dark:text-pink-400">
-                <Shield className="inline-block w-5 h-5 mr-2" />
-                Detection Results
-              </CardTitle>
-              <CardDescription>
-                Testing against common AES modes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {results.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Enter ciphertext and key to start detection</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {results.map((result, index) => (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-xl border-2 transition-all ${
-                        result.success
-                          ? 'border-green-400 bg-green-50 dark:bg-green-900/20'
-                          : 'border-gray-300 bg-gray-50 dark:bg-gray-800/50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {result.success ? (
-                          <CheckCircle className="w-5 h-5 text-green-500 mt-1" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-gray-400 mt-1" />
-                        )}
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm">
-                            {result.mode}
-                            {result.success && (
-                              <span className="ml-2 text-xs bg-green-500 text-white px-2 py-1 rounded-full">
-                                MATCH!
-                              </span>
-                            )}
-                          </div>
-                          {result.success && result.decrypted && (
-                            <div className="mt-2 p-2 bg-white dark:bg-gray-900 rounded-lg">
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Decrypted text:</p>
-                              <p className="text-sm font-mono break-all">{result.decrypted}</p>
-                            </div>
-                          )}
-                          {result.error && (
-                            <p className="text-xs text-gray-500 mt-1">{result.error}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="kirby-card mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="card-surface">
           <CardHeader>
-            <CardTitle className="text-purple-600 dark:text-purple-400">
-              <AlertCircle className="inline-block w-5 h-5 mr-2" />
-              How It Works
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Key className="w-5 h-5 text-[var(--candy-grape)]" />
+              The Clues
             </CardTitle>
+            <CardDescription>
+              Hand over the ciphertext and key material, and we&apos;ll test them against every AES mode we know.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <h3 className="font-semibold mb-2 text-pink-600">Supported AES Modes:</h3>
-                <ul className="space-y-1">
-                  <li>• ECB (Electronic Codebook) - No IV needed</li>
-                  <li>• CBC (Cipher Block Chaining) - Requires IV</li>
-                  <li>• CFB (Cipher Feedback) - Requires IV</li>
-                  <li>• OFB (Output Feedback) - Requires IV</li>
-                  <li>• CTR (Counter) - Requires IV</li>
-                </ul>
+                <Label>Cipher Format</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant={inputFormat === 'hex' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInputFormat('hex')}
+                  >
+                    Hex
+                  </Button>
+                  <Button
+                    variant={inputFormat === 'base64' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setInputFormat('base64')}
+                  >
+                    Base64
+                  </Button>
+                </div>
               </div>
+
               <div>
-                <h3 className="font-semibold mb-2 text-purple-600">Key Sizes Tested:</h3>
-                <ul className="space-y-1">
-                  <li>• AES-128 (16 bytes)</li>
-                  <li>• AES-192 (24 bytes)</li>
-                  <li>• AES-256 (32 bytes)</li>
-                </ul>
-                <p className="mt-2 text-xs text-gray-600">
-                  The tool attempts decryption with each combination and checks if the result is readable text.
-                </p>
+                <Label>Key Format</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant={keyFormat === 'hex' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setKeyFormat('hex')}
+                    className="px-3"
+                  >
+                    Hex
+                  </Button>
+                  <Button
+                    variant={keyFormat === 'base64' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setKeyFormat('base64')}
+                    className="px-3"
+                  >
+                    B64
+                  </Button>
+                  <Button
+                    variant={keyFormat === 'utf8' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setKeyFormat('utf8')}
+                    className="px-3"
+                  >
+                    Text
+                  </Button>
+                </div>
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="ciphertext">Ciphertext</Label>
+              <textarea
+                id="ciphertext"
+                value={ciphertext}
+                onChange={(e) => setCiphertext(e.target.value)}
+                placeholder={inputFormat === 'hex' ? "hex-encoded ciphertext..." : "base64-encoded ciphertext..."}
+                className="field-input w-full h-24 mt-2 font-mono"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="key">Secret Key</Label>
+              <Input
+                id="key"
+                type="text"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder={keyFormat === 'hex' ? "hex-encoded key..." : keyFormat === 'base64' ? "base64-encoded key..." : "utf-8 text key..."}
+                className="mt-2 font-mono"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="iv">
+                IV (Initialization Vector)
+                <span className="ml-2 text-xs text-muted-foreground">optional — required for CBC, CFB, OFB, CTR</span>
+              </Label>
+              <Input
+                id="iv"
+                type="text"
+                value={iv}
+                onChange={(e) => setIv(e.target.value)}
+                placeholder={inputFormat === 'hex' ? "hex-encoded IV..." : "base64-encoded IV..."}
+                className="mt-2 font-mono"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={detectAESMode}
+                disabled={!ciphertext || !key || isDetecting}
+                className="flex-1"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                {isDetecting ? "Investigating..." : "Crack the Case"}
+              </Button>
+              <Button
+                onClick={generateExample}
+                variant="outline"
+              >
+                Try an Example
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        <Card className="card-surface">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Shield className="w-5 h-5 text-[var(--candy-sky)]" />
+              The Case Files
+            </CardTitle>
+            <CardDescription>
+              We&apos;ll try all 15 mode and key-size combinations for you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {results.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="w-12 h-12 mx-auto mb-4 opacity-40" />
+                <p className="text-sm">Drop in a ciphertext and key, then let&apos;s start sleuthing.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {results.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-2xl border-2 border-[var(--ink)] transition-colors ${
+                      result.success
+                        ? 'bg-[#4cd4a9]/20'
+                        : 'bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {result.success ? (
+                        <CheckCircle className="w-5 h-5 text-[var(--candy-mint)] mt-0.5 shrink-0" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 font-mono text-sm font-bold text-foreground">
+                          {result.mode}
+                          {result.success && (
+                            <span className="chip border-2 border-[var(--ink)] bg-[#4cd4a9]/40 text-foreground">
+                              🎉 case solved
+                            </span>
+                          )}
+                        </div>
+                        {result.success && result.decrypted && (
+                          <div className="mt-2 p-2 rounded-xl border-2 border-[var(--ink)] bg-white">
+                            <p className="text-xs font-bold text-muted-foreground mb-1">Decrypted message 📬</p>
+                            <p className="text-sm font-mono text-foreground break-all">{result.decrypted}</p>
+                          </div>
+                        )}
+                        {result.error && (
+                          <p className="text-xs text-muted-foreground mt-1">🤷 {result.error}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="card-surface mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Search className="w-5 h-5 text-[var(--candy-pink)]" />
+            🔍 How the detective works
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-muted-foreground">
+            <div>
+              <h3 className="font-bold text-foreground mb-2">Modes we investigate</h3>
+              <ul className="space-y-1 text-sm">
+                <li><strong>ECB</strong> — Electronic Codebook (no IV)</li>
+                <li><strong>CBC</strong> — Cipher Block Chaining (needs IV)</li>
+                <li><strong>CFB</strong> — Cipher Feedback (needs IV)</li>
+                <li><strong>OFB</strong> — Output Feedback (needs IV)</li>
+                <li><strong>CTR</strong> — Counter (needs IV)</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground mb-2">Key sizes we try</h3>
+              <ul className="space-y-1 text-sm">
+                <li><strong>AES-128</strong> — 16 bytes</li>
+                <li><strong>AES-192</strong> — 24 bytes</li>
+                <li><strong>AES-256</strong> — 32 bytes</li>
+              </ul>
+              <p className="mt-3 text-sm">
+                We attempt every combination and check whether the decrypted output looks like
+                real, readable text. When it does, we&apos;ve likely found the mode and key size. Case closed!
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

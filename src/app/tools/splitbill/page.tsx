@@ -121,34 +121,52 @@ const STEP_META: Record<
   { label: string; description: string; icon: React.ComponentType<any> }
 > = {
   upload: {
-    label: "Upload Receipt",
-    description: "Drop an image and set your Kirby AI key",
+    label: "Upload",
+    description: "Snap or drop your receipt 📸",
     icon: Upload,
   },
   review: {
-    label: "Review Items",
-    description: "Check parsed data & totals",
+    label: "Review",
+    description: "Double-check what the AI read",
     icon: Receipt,
   },
   people: {
-    label: "Add Friends",
-    description: "List everyone who shares the bill",
+    label: "People",
+    description: "Add your crew",
     icon: Users,
   },
   assignment: {
-    label: "Assign Items",
-    description: "Split dishes with precise percentages",
+    label: "Assign",
+    description: "Who ate what?",
     icon: Images,
   },
   results: {
     label: "Results",
-    description: "Fair share with tax + service",
+    description: "The damage 💸",
     icon: Sparkles,
   },
 };
 
+// Candy color per step index (presentation only)
+const STEP_COLORS = [
+  "var(--candy-pink)",
+  "var(--candy-yellow)",
+  "var(--candy-mint)",
+  "var(--candy-sky)",
+  "var(--candy-grape)",
+];
+
+// Per-person result card tints (hex + alpha so Tailwind v3 can compile them)
+const PERSON_CARD_TINTS = [
+  "bg-[#ff6fa5]/15",
+  "bg-[#ffc94d]/20",
+  "bg-[#4cd4a9]/15",
+  "bg-[#5ab8ff]/15",
+  "bg-[#a78bfa]/15",
+];
+
 const ULTRA_PRESET = {
-  label: "Kirby Ultra",
+  label: "Ultra",
   description: "Maximum context window (16k tokens) for the toughest receipts",
   maxTokens: 16384,
   temperature: 0.01,
@@ -689,7 +707,7 @@ export default function SplitBillTool() {
   const handleCopyShareableConfig = async () => {
     const url = generateShareableUrl();
     if (!url) {
-      setErrorMessage("Please save your Kirby AI configuration first.");
+      setErrorMessage("Save your AI configuration first.");
       return;
     }
     try {
@@ -768,7 +786,7 @@ export default function SplitBillTool() {
       clearTimeout(timeoutId);
       if (!response.ok) {
         const text = await response.text();
-        let errorMessage = `Kirby AI error: ${response.status}`;
+        let errorMessage = `Azure OpenAI error: ${response.status}`;
 
         // Provide more specific error messages
         if (response.status === 401) {
@@ -788,7 +806,7 @@ export default function SplitBillTool() {
       const data = await response.json();
       const jsonText = data?.choices?.[0]?.message?.content;
       if (!jsonText) {
-        throw new Error("Kirby AI response did not include parsed content.");
+        throw new Error("Azure OpenAI response did not include parsed content.");
       }
       const usage = buildTokenUsage(
         "azure",
@@ -889,7 +907,7 @@ export default function SplitBillTool() {
     try {
       setLoadingState({
         text: "Analyzing receipt...",
-        subtext: "Processing image for Kirby Vision",
+        subtext: "Compressing image for upload",
       });
 
       // Use optimized image processing for OCR
@@ -897,7 +915,7 @@ export default function SplitBillTool() {
 
       setLoadingState({
         text: "Analyzing receipt...",
-        subtext: "Consulting Kirby Vision",
+        subtext: "Extracting items via vision model",
       });
 
       const { parsedJson, usage } =
@@ -913,7 +931,7 @@ export default function SplitBillTool() {
       setCurrentReceipt(receipt);
       setTokenUsage(usage);
       setOcrMeta({
-        method: `Kirby Vision · ${ULTRA_PRESET.label}`,
+        method: `Vision OCR · ${ULTRA_PRESET.label}`,
       });
       setCurrentStep("review");
     } catch (error) {
@@ -1200,7 +1218,7 @@ export default function SplitBillTool() {
       const unassignedTotal = unassignedItems.reduce((sum, item) => sum + item.total, 0);
       lines.push(
         "",
-        "⚠️ Unassigned Items:",
+        "Unassigned Items:",
         ...unassignedItems.map(
           (item) => `  • ${item.name} -> ${formatCurrency(item.total, currentReceipt.currency)}`
         ),
@@ -1482,35 +1500,34 @@ export default function SplitBillTool() {
     selectionNaturalInfo.height >= 10;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
-      <div className="text-center space-y-3">
+    <div className="space-y-8">
+      <div>
         <motion.p
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-sm uppercase tracking-[0.3em] text-pink-500 font-semibold"
+          className="mono-label"
         >
-          SplitBill AI
+          🧾 friendship saver
         </motion.p>
         <motion.h1
-          className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 bg-clip-text text-transparent drop-shadow-xl"
+          className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          Kirby-fied Receipt Splitter
+          Bill Splitter
         </motion.h1>
-        <p className="text-base text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-          Upload a restaurant receipt, let Kirby AI read it, and share the bill
-          with friends—complete with taxes, service charges, and pastel glitter
-          vibes.
+        <p className="mt-2 max-w-2xl text-sm text-foreground/70">
+          Snap the receipt, let AI read it, split it fairly. No more &apos;I
+          only had water&apos; drama.
         </p>
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="mt-4 flex flex-wrap gap-3">
           <Button
             variant="outline"
             onClick={() => setShowConfigModal(true)}
             className="gap-2"
           >
             <Settings className="h-4 w-4" />
-            Kirby AI Settings
+            AI Settings
           </Button>
           <Button
             variant="ghost"
@@ -1518,28 +1535,28 @@ export default function SplitBillTool() {
             className="gap-2"
           >
             <Share2 className="h-4 w-4" />
-            Share Kirby config
+            Share config
           </Button>
         </div>
         {configLoadedFromUrl && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
-            <Sparkles className="h-4 w-4" />
-            Config loaded from URL
+          <div className="chip mt-3 bg-[#4cd4a9]/40">
+            <Sparkles className="h-3.5 w-3.5" />
+            config loaded from URL ✨
           </div>
         )}
         {shareNotice && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
-            <Share2 className="h-4 w-4" />
+          <div className="chip ml-2 mt-3 bg-[#5ab8ff]/40">
+            <Share2 className="h-3.5 w-3.5" />
             {shareNotice}
           </div>
         )}
-        <div className="max-w-4xl mx-auto space-y-2">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Kirby Ultra handles every receipt with 16,384 tokens of context so you
-            never need to manage tiers.
+        <div className="mt-3 space-y-1">
+          <p className="text-xs text-foreground/60">
+            Every receipt gets the full 16,384-token brainpower — no tier
+            juggling needed.
           </p>
           {tokenUsage && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-foreground/60">
               Last OCR run via{" "}
               {tokenUsage.provider === "azure" ? "Azure OpenAI" : "Google Gemini"}{" "}
               used {describeTokenUsage(tokenUsage) || "an unknown number of tokens"}.
@@ -1548,57 +1565,79 @@ export default function SplitBillTool() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:justify-center">
+      <div className="card-surface flex flex-col gap-2 p-3 sm:flex-row sm:items-stretch">
         {STEP_ORDER.map((step, index) => {
-          const Icon = STEP_META[step].icon;
           const active = currentStep === step;
           const completed = index < stepIndex;
           const clickable = canNavigateToStep(step);
+          const candy = STEP_COLORS[index % STEP_COLORS.length];
           return (
             <button
               key={step}
               type="button"
               onClick={() => clickable && handleStepClick(step)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl border-2 shadow-md transition-all w-full sm:w-auto",
-                active
-                  ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white border-pink-400"
-                  : completed
-                    ? "bg-white dark:bg-gray-900 border-pink-300 text-pink-600"
-                    : "bg-white/70 border-gray-200 text-gray-500",
-                clickable ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                "flex flex-1 items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-all",
+                active || completed
+                  ? "border-foreground shadow-[3px_3px_0_var(--ink)]"
+                  : "border-foreground/20 bg-card",
+                active && "-translate-y-0.5",
+                clickable ? "cursor-pointer" : "cursor-not-allowed opacity-50"
               )}
+              style={
+                active || completed ? { backgroundColor: candy } : undefined
+              }
             >
-              <Icon className="h-5 w-5" />
-              <div className="text-left">
-                <p className="text-sm font-semibold">{STEP_META[step].label}</p>
-                <p className="text-xs opacity-80">
+              <span
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 font-mono text-xs font-bold",
+                  active || completed
+                    ? "border-foreground bg-card text-foreground"
+                    : "border-foreground/30 bg-card text-foreground/50"
+                )}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="min-w-0">
+                <span
+                  className={cn(
+                    "block truncate text-xs font-extrabold uppercase tracking-wide",
+                    active || completed
+                      ? "text-foreground"
+                      : "text-foreground/50"
+                  )}
+                >
+                  {STEP_META[step].label}
+                </span>
+                <span
+                  className={cn(
+                    "hidden text-xs xl:block",
+                    active || completed
+                      ? "text-foreground/70"
+                      : "text-foreground/40"
+                  )}
+                >
                   {STEP_META[step].description}
-                </p>
-              </div>
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
 
       {showSection("upload") && (
-        <section
-          className={cn(
-            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-pink-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
-            currentStep === "upload" ? "ring-4 ring-pink-200" : ""
-          )}
-        >
+        <section className="card-surface space-y-6 p-6">
           <header className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-pink-100 text-pink-600">
-                <Upload className="h-6 w-6" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-foreground bg-[var(--candy-pink)] text-foreground shadow-[2px_2px_0_var(--ink)]">
+                <Upload className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-gray-900 dark:text-white">
-                  Step 1 · Upload Receipt
+                <h2 className="text-lg font-bold text-foreground">
+                  Upload your receipt 🧾
                 </h2>
-                <p className="text-sm text-gray-500">
-                  Drag & drop an image or tap to browse
+                <p className="text-sm text-foreground/60">
+                  Drag &amp; drop a photo or click to browse
                 </p>
               </div>
             </div>
@@ -1606,8 +1645,8 @@ export default function SplitBillTool() {
 
           <div
             className={cn(
-              "border-[3px] border-dashed rounded-3xl p-10 text-center transition-all duration-300 cursor-pointer bg-gradient-to-br from-white to-pink-50 hover:from-pink-50 hover:to-white",
-              selectedFile ? "border-pink-400" : "border-pink-200"
+              "cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-colors hover:border-[var(--candy-pink)] hover:bg-[#ff6fa5]/10",
+              selectedFile ? "border-[var(--candy-pink)]" : "border-foreground/30"
             )}
             onDragOver={(e) => {
               e.preventDefault();
@@ -1650,7 +1689,7 @@ export default function SplitBillTool() {
                     alt="Receipt preview"
                     fill
                     sizes="(max-width: 768px) 90vw, 480px"
-                    className="rounded-2xl shadow-lg object-contain border-2 border-white bg-white"
+                    className="rounded-xl border-2 border-foreground bg-secondary/60 object-contain shadow-[3px_3px_0_var(--ink)]"
                   />
                 </div>
                 <div className="flex flex-wrap gap-3 justify-center">
@@ -1704,18 +1743,21 @@ export default function SplitBillTool() {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-400 text-center w-full">
+                <p className="w-full text-center text-xs text-foreground/60">
                   {hasCroppedImage
-                    ? "Cropped version in use. You can re-open Crop to adjust."
-                    : "Tip: Tap Crop to outline the receipt and remove background clutter for better OCR."}
+                    ? "Cropped version in use. Re-open Crop to adjust. ✂️"
+                    : "Tip: crop to the receipt text to remove background clutter and improve OCR accuracy."}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <FileImage className="w-16 h-16 text-pink-200 mx-auto" />
-                <p className="text-xl font-semibold">Drop your receipt here</p>
-                <p className="text-gray-500">
-                  Supports JPG, PNG, HEIC. We never upload files to our server.
+                <FileImage className="mx-auto h-12 w-12 text-foreground/30" />
+                <p className="text-lg font-bold text-foreground">
+                  Drop your receipt here 🍕
+                </p>
+                <p className="text-sm text-foreground/60">
+                  Supports JPG, PNG, HEIC. Files never leave your browser —
+                  pinky promise.
                 </p>
                 <Button
                   className="mt-2"
@@ -1733,49 +1775,43 @@ export default function SplitBillTool() {
       )}
 
       {showSection("review") && currentReceipt && (
-        <section
-          className={cn(
-            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-purple-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
-            currentStep === "review" ? "ring-4 ring-purple-200" : ""
-          )}
-        >
+        <section className="card-surface space-y-6 p-6">
           <header className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-purple-100 text-purple-600">
-              <Receipt className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-foreground bg-[var(--candy-yellow)] text-foreground shadow-[2px_2px_0_var(--ink)]">
+              <Receipt className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black">Step 2 · Review Results</h2>
-              <p className="text-sm text-gray-500">
-                Confirm the parsed merchant info and totals
+              <h2 className="text-lg font-bold text-foreground">
+                Did the AI get it right?
+              </h2>
+              <p className="text-sm text-foreground/60">
+                Confirm the merchant info and totals before splitting
               </p>
             </div>
           </header>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-3xl border-2 border-purple-100 bg-gradient-to-br from-white to-purple-50 p-5 space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                Receipt Info
-              </h3>
-              <p className="font-bold text-xl">
+            <div className="space-y-3 rounded-xl border-2 border-foreground bg-[#ffc94d]/15 p-5 shadow-[3px_3px_0_var(--ink)]">
+              <p className="mono-label">🏠 the place</p>
+              <p className="text-xl font-bold text-foreground">
                 {currentReceipt.restaurant || "Restaurant name not detected"}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-foreground/60">
                 {currentReceipt.address || "Address not detected"}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-foreground/60">
                 {currentReceipt.date || "Date not detected"}
               </p>
               {ocrMeta && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-foreground/60">
                   Parsed via {ocrMeta.method}
                 </p>
               )}
 
-              <div className="pt-4 border-t border-purple-200/50 space-y-3">
+              <div className="space-y-3 border-t-2 border-foreground/20 pt-4">
                 <div className="flex gap-3">
                   <div className="flex-1 space-y-1">
-                    <Label htmlFor="currency" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Currency</Label>
+                    <Label htmlFor="currency" className="text-xs font-extrabold uppercase tracking-wider text-foreground/60">Currency</Label>
                     <Input
                       id="currency"
                       value={currentReceipt.currency}
@@ -1785,13 +1821,13 @@ export default function SplitBillTool() {
                           currency: e.target.value.toUpperCase(),
                         })
                       }
-                      className="bg-white/50 border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                      className="font-mono"
                       placeholder="IDR, USD..."
                     />
                   </div>
                   {currentReceipt.currency !== "IDR" && (
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor="exchangeRate" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rate to IDR</Label>
+                      <Label htmlFor="exchangeRate" className="text-xs font-extrabold uppercase tracking-wider text-foreground/60">Rate to IDR</Label>
                       <Input
                         id="exchangeRate"
                         type="number"
@@ -1802,93 +1838,96 @@ export default function SplitBillTool() {
                             exchangeRate: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="bg-white/50 border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                        className="font-mono"
                         placeholder="15000"
                       />
                     </div>
                   )}
                 </div>
                 {currentReceipt.currency !== "IDR" && (
-                  <p className="text-xs text-purple-600">
-                    1 {currentReceipt.currency} = {formatCurrency(currentReceipt.exchangeRate)}
+                  <p className="text-xs font-bold text-foreground/70">
+                    1 {currentReceipt.currency} ={" "}
+                    <span className="font-mono">{formatCurrency(currentReceipt.exchangeRate)}</span>
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="rounded-3xl border-2 border-purple-100 bg-white p-5 space-y-3">
-              <h3 className="text-lg font-semibold">Bill summary</h3>
+            <div className="space-y-3 rounded-xl border-2 border-foreground bg-[#5ab8ff]/15 p-5 shadow-[3px_3px_0_var(--ink)]">
+              <p className="mono-label">🧾 bill summary</p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Items total</span>
-                  <span>{formatCurrency(currentReceipt.subtotal, currentReceipt.currency)}</span>
+                  <span className="text-foreground/60">Items total</span>
+                  <span className="font-mono">{formatCurrency(currentReceipt.subtotal, currentReceipt.currency)}</span>
                 </div>
                 {currentReceipt.serviceCharge > 0 && (
                   <div className="flex justify-between">
-                    <span>Service charge</span>
-                    <span>{formatCurrency(currentReceipt.serviceCharge, currentReceipt.currency)}</span>
+                    <span className="text-foreground/60">Service charge</span>
+                    <span className="font-mono">{formatCurrency(currentReceipt.serviceCharge, currentReceipt.currency)}</span>
                   </div>
                 )}
                 {currentReceipt.tax > 0 && (
                   <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>{formatCurrency(currentReceipt.tax, currentReceipt.currency)}</span>
+                    <span className="text-foreground/60">Tax</span>
+                    <span className="font-mono">{formatCurrency(currentReceipt.tax, currentReceipt.currency)}</span>
                   </div>
                 )}
                 {currentReceipt.extraCharges.map((charge) => (
                   <div className="flex justify-between" key={charge.name}>
-                    <span>{charge.name}</span>
-                    <span>{formatCurrency(charge.amount, currentReceipt.currency)}</span>
+                    <span className="text-foreground/60">{charge.name}</span>
+                    <span className="font-mono">{formatCurrency(charge.amount, currentReceipt.currency)}</span>
                   </div>
                 ))}
                 {currentReceipt.discount !== 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Discount</span>
-                    <span>{formatCurrency(currentReceipt.discount, currentReceipt.currency)}</span>
+                  <div className="flex justify-between font-bold text-[var(--candy-mint)]">
+                    <span>Discount 🎁</span>
+                    <span className="font-mono">{formatCurrency(currentReceipt.discount, currentReceipt.currency)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-lg pt-3 border-t border-purple-100 mt-2">
+                <div className="mt-2 flex justify-between border-t-2 border-foreground/20 pt-3 text-lg font-bold">
                   <span>Total</span>
-                  <span>{formatCurrency(currentReceipt.total, currentReceipt.currency)}</span>
+                  <span className="font-mono text-[var(--candy-pink)]">{formatCurrency(currentReceipt.total, currentReceipt.currency)}</span>
                 </div>
                 {!currentReceipt.isValid && (
-                  <p className="text-xs text-amber-600">
-                    ⚠️ Totals don&apos;t add up perfectly. Double-check numbers.
+                  <p className="rounded-lg border-2 border-foreground bg-[#ffc94d]/40 px-3 py-2 text-xs font-bold text-foreground">
+                    🤔 Totals don&apos;t add up perfectly. Double-check the numbers.
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border-2 border-purple-100 bg-white p-5">
-            <h3 className="text-lg font-semibold mb-4">Extracted items</h3>
+          <div className="rounded-xl border-2 border-foreground bg-[#ff6fa5]/10 p-5 shadow-[3px_3px_0_var(--ink)]">
+            <p className="mono-label mb-4">🍕 what you ordered</p>
             <div className="space-y-3">
               {currentReceipt.items.map((item, index) => (
                 <div
                   key={`${item.name}-${index}`}
-                  className="flex items-center justify-between rounded-2xl border border-purple-100 px-4 py-3"
+                  className="flex items-center justify-between rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-[2px_2px_0_var(--ink)]"
                 >
                   <div>
-                    <p className="font-semibold">{item.name}</p>
+                    <p className="font-bold text-foreground">{item.name}</p>
                     {item.translatedName && (
-                      <p className="text-sm text-purple-600 mt-0.5">
-                        🌐 {item.translatedName}
+                      <p className="mt-0.5 text-sm text-foreground/60">
+                        {item.translatedName}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400">Item #{index + 1}</p>
+                    <p className="text-xs text-foreground/50">
+                      item #{index + 1}
+                    </p>
                   </div>
-                  <p className="font-semibold text-purple-600">
+                  <p className="font-mono font-bold text-foreground">
                     {formatCurrency(item.total, currentReceipt.currency)}
                   </p>
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3 justify-end mt-6">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <Button variant="outline" onClick={() => setCurrentStep("upload")}>
                 Back
               </Button>
               <Button onClick={() => setCurrentStep("people")}>
-                Looks good · Next
+                Looks good — next ✨
               </Button>
             </div>
           </div>
@@ -1896,33 +1935,30 @@ export default function SplitBillTool() {
       )}
 
       {showSection("people") && (
-        <section
-          className={cn(
-            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-blue-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
-            currentStep === "people" ? "ring-4 ring-blue-200" : ""
-          )}
-        >
+        <section className="card-surface space-y-6 p-6">
           <header className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-blue-100 text-blue-600">
-              <Users className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-foreground bg-[var(--candy-mint)] text-foreground shadow-[2px_2px_0_var(--ink)]">
+              <Users className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black">Step 3 · Add people</h2>
-              <p className="text-sm text-gray-500">
-                Everyone here will get a pastel-colored share card ✨
+              <h2 className="text-lg font-bold text-foreground">
+                Add your crew 👯
+              </h2>
+              <p className="text-sm text-foreground/60">
+                Everyone listed gets an itemized share
               </p>
             </div>
           </header>
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="md:col-span-2 space-y-4">
-              <Label htmlFor="personName" className="font-semibold text-sm">
+              <Label htmlFor="personName" className="text-sm font-medium">
                 Person name
               </Label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   id="personName"
-                  placeholder="Add Alice, Bob, Kirby..."
+                  placeholder="e.g. Alice, Bob..."
                   value={personInput}
                   onChange={(e) => setPersonInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -1936,18 +1972,16 @@ export default function SplitBillTool() {
                   Add person
                 </Button>
               </div>
-              <p className="text-xs text-gray-400">
-                Tip: Press Enter to add quickly
+              <p className="text-xs text-foreground/60">
+                Tip: press Enter to add quickly
               </p>
             </div>
 
-            <div className="rounded-3xl border-2 border-blue-100 bg-blue-50/80 p-4 space-y-2 text-sm text-blue-900">
-              <p className="font-semibold text-blue-600">
-                💡 Headcount preview
-              </p>
+            <div className="space-y-2 rounded-xl border-2 border-foreground bg-[#4cd4a9]/15 p-4 text-sm text-foreground/70 shadow-[3px_3px_0_var(--ink)]">
+              <p className="mono-label">👥 headcount</p>
               <p>
-                You&apos;ve added <strong>{people.length}</strong>{" "}
-                {people.length === 1 ? "friend" : "friends"} so far.
+                <strong className="font-mono text-foreground">{people.length}</strong>{" "}
+                {people.length === 1 ? "person" : "people"} added so far.
               </p>
               <p>Each will receive a fair share summary.</p>
             </div>
@@ -1958,12 +1992,12 @@ export default function SplitBillTool() {
               {people.map((person) => (
                 <span
                   key={person.name}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold shadow"
-                  style={{ backgroundColor: `${person.color}20`, color: person.color }}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-foreground px-4 py-1.5 text-sm font-bold text-foreground shadow-[2px_2px_0_var(--ink)]"
+                  style={{ backgroundColor: `${person.color}33` }}
                 >
                   {person.name}
                   <button
-                    className="text-xs"
+                    className="text-xs opacity-70 hover:opacity-100"
                     onClick={() => handleRemovePerson(person.name)}
                   >
                     ✕
@@ -1972,8 +2006,8 @@ export default function SplitBillTool() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">
-              No one added yet. Kirby eats alone? 😢
+            <p className="text-sm text-foreground/60">
+              No one added yet. Who&apos;s hungry? 🍽️
             </p>
           )}
 
@@ -1992,27 +2026,24 @@ export default function SplitBillTool() {
       )}
 
       {showSection("assignment") && currentReceipt && people.length > 0 && (
-        <section
-          className={cn(
-            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-amber-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
-            currentStep === "assignment" ? "ring-4 ring-amber-200" : ""
-          )}
-        >
+        <section className="card-surface space-y-6 p-6">
           <header className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-amber-100 text-amber-600">
-              <Images className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-foreground bg-[var(--candy-sky)] text-foreground shadow-[2px_2px_0_var(--ink)]">
+              <Images className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black">Step 4 · Assign items</h2>
-              <p className="text-sm text-gray-500">
-                Tap an item to distribute it. Two people auto-balance to 100%.
+              <h2 className="text-lg font-bold text-foreground">
+                Who ate what? 🍜
+              </h2>
+              <p className="text-sm text-foreground/60">
+                Click an item to distribute it. Two people auto-balance to 100%.
               </p>
             </div>
           </header>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Items</h3>
+              <p className="mono-label">🍕 items</p>
               {currentReceipt.items.map((item, index) => {
                 const unique = Array.from(new Set(item.assignedTo ?? []));
                 const totalPercentage = unique.reduce(
@@ -2024,32 +2055,32 @@ export default function SplitBillTool() {
                     key={`${item.name}-${index}`}
                     onClick={() => setAssignmentModalIndex(index)}
                     className={cn(
-                      "w-full text-left rounded-3xl border px-4 py-4 transition-all",
+                      "w-full rounded-xl border-2 px-4 py-4 text-left transition-all",
                       unique.length
-                        ? "border-amber-200 bg-amber-50"
-                        : "border-gray-200 bg-white"
+                        ? "border-foreground bg-[#4cd4a9]/20 shadow-[3px_3px_0_var(--ink)]"
+                        : "border-foreground/30 bg-card hover:border-foreground hover:shadow-[3px_3px_0_var(--ink)]"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-semibold">{item.name}</p>
+                        <p className="font-bold text-foreground">{item.name}</p>
                         {item.translatedName && (
-                          <p className="text-xs text-amber-600">
-                            🌐 {item.translatedName}
+                          <p className="text-xs text-foreground/60">
+                            {item.translatedName}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-foreground/60">
                           {unique.length
                             ? `Assigned to ${unique.join(", ")}`
-                            : "Tap to assign"}
+                            : "Click to assign 👈"}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">
+                        <p className="font-mono font-bold text-foreground">
                           {formatCurrency(item.total, currentReceipt.currency)}
                         </p>
                         {unique.length > 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs font-bold text-[var(--candy-mint)]">
                             {totalPercentage.toFixed(1)}% assigned
                           </p>
                         )}
@@ -2060,31 +2091,31 @@ export default function SplitBillTool() {
               })}
             </div>
 
-            <div className="rounded-3xl border-2 border-amber-100 bg-amber-50/70 p-5 space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Users className="h-4 w-4 text-amber-600" />
-                Assignment summary
-              </h3>
+            <div className="space-y-4 rounded-xl border-2 border-foreground bg-[#5ab8ff]/15 p-5 shadow-[3px_3px_0_var(--ink)]">
+              <p className="mono-label flex items-center gap-2">
+                <Users className="h-3.5 w-3.5" />
+                🧮 running totals
+              </p>
               {assignmentSummary.length ? (
                 assignmentSummary.map((summary) => (
                   <div
                     key={summary.name}
-                    className="rounded-2xl bg-white/80 p-4 shadow flex items-center justify-between"
+                    className="flex items-center justify-between rounded-xl border-2 border-foreground bg-card p-4 shadow-[2px_2px_0_var(--ink)]"
                   >
                     <div>
-                      <p className="font-semibold">{summary.name}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="font-bold text-foreground">{summary.name}</p>
+                      <p className="text-xs text-foreground/60">
                         {summary.count} item{summary.count === 1 ? "" : "s"} assigned
                       </p>
                     </div>
-                    <p className="font-semibold text-amber-600">
+                    <p className="font-mono font-bold text-[var(--candy-pink)]">
                       {formatCurrency(summary.subtotal, currentReceipt.currency)}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-amber-800">
-                  Assign at least one item to each friend.
+                <p className="text-sm text-foreground/60">
+                  Assign at least one item to each person.
                 </p>
               )}
               <Button
@@ -2092,7 +2123,7 @@ export default function SplitBillTool() {
                 className="w-full"
                 disabled={people.length === 0}
               >
-                Calculate fair split
+                Do the math 🧮
               </Button>
             </div>
           </div>
@@ -2109,43 +2140,46 @@ export default function SplitBillTool() {
       )}
 
       {showSection("results") && results && currentReceipt && (
-        <section
-          className={cn(
-            "bg-white/95 dark:bg-gray-900/95 rounded-3xl border-2 border-green-200 shadow-2xl p-6 space-y-6 backdrop-blur-sm",
-            currentStep === "results" ? "ring-4 ring-green-200" : ""
-          )}
-        >
+        <section className="card-surface space-y-6 p-6">
           <header className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-green-100 text-green-600">
-              <Sparkles className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-foreground bg-[var(--candy-grape)] text-foreground shadow-[2px_2px_0_var(--ink)]">
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-2xl font-black">Step 5 · Results</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-bold text-foreground">
+                The damage 💸
+              </h2>
+              <p className="text-sm text-foreground/60">
                 Totals include proportional service charge, tax, and fees.
               </p>
             </div>
           </header>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {results.map((person) => (
+            {results.map((person, personIndex) => (
               <div
                 key={person.name}
-                className="rounded-3xl border-2 border-green-100 bg-gradient-to-br from-white to-green-50 p-5 shadow"
+                className={cn(
+                  "card-hover rounded-2xl border-2 border-foreground p-5 shadow-[4px_4px_0_var(--ink)]",
+                  PERSON_CARD_TINTS[personIndex % PERSON_CARD_TINTS.length]
+                )}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white"
+                    className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-foreground font-bold text-white shadow-[2px_2px_0_var(--ink)]"
                     style={{ backgroundColor: person.color }}
                   >
                     {person.name[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-lg">{person.name}</p>
-                    <p className="text-sm text-gray-500">
-                      Pays {formatCurrency(person.total, currentReceipt.currency)}
+                    <p className="text-lg font-bold text-foreground">{person.name}</p>
+                    <p className="text-sm text-foreground/60">
+                      Pays{" "}
+                      <span className="font-mono font-bold text-[var(--candy-pink)]">
+                        {formatCurrency(person.total, currentReceipt.currency)}
+                      </span>
                       {person.totalIdr && (
-                        <span className="block text-xs text-gray-400">
+                        <span className="block font-mono text-xs text-foreground/60">
                           ≈ {formatCurrency(person.totalIdr)}
                         </span>
                       )}
@@ -2157,73 +2191,73 @@ export default function SplitBillTool() {
                   {person.items.map((item, index) => (
                     <div
                       key={`${item.name}-${index}`}
-                      className="flex justify-between text-gray-600"
+                      className="flex justify-between text-foreground/70"
                     >
                       <span>
                         {item.translatedName ? (
                           <>
                             {item.translatedName}{" "}
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-foreground/50">
                               ({item.name})
                             </span>
                             {" "}
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-foreground/50">
                               ({item.percentage.toFixed(1)}%)
                             </span>
                           </>
                         ) : (
                           <>
                             {item.name}{" "}
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-foreground/50">
                               ({item.percentage.toFixed(1)}%)
                             </span>
                           </>
                         )}
                       </span>
-                      <span className="font-semibold">
+                      <span className="font-mono">
                         {formatCurrency(item.price)}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t border-green-100 mt-4 pt-4 text-sm space-y-2">
+                <div className="mt-4 space-y-2 border-t-2 border-foreground/20 pt-4 text-sm">
                   <div className="flex justify-between">
-                    <span>Items</span>
-                    <span>{formatCurrency(person.subtotal)}</span>
+                    <span className="text-foreground/60">Items</span>
+                    <span className="font-mono">{formatCurrency(person.subtotal)}</span>
                   </div>
                   {person.serviceCharge > 0 && (
                     <div className="flex justify-between">
-                      <span>Service charge</span>
-                      <span>{formatCurrency(person.serviceCharge)}</span>
+                      <span className="text-foreground/60">Service charge</span>
+                      <span className="font-mono">{formatCurrency(person.serviceCharge)}</span>
                     </div>
                   )}
                   {person.tax > 0 && (
                     <div className="flex justify-between">
-                      <span>Tax</span>
-                      <span>{formatCurrency(person.tax)}</span>
+                      <span className="text-foreground/60">Tax</span>
+                      <span className="font-mono">{formatCurrency(person.tax)}</span>
                     </div>
                   )}
                   {person.extraCharges.map((charge, index) => (
                     <div className="flex justify-between" key={index}>
-                      <span>{charge.name}</span>
-                      <span>{formatCurrency(charge.amount)}</span>
+                      <span className="text-foreground/60">{charge.name}</span>
+                      <span className="font-mono">{formatCurrency(charge.amount)}</span>
                     </div>
                   ))}
                   {person.discount !== 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Discount</span>
-                      <span>{formatCurrency(person.discount)}</span>
+                    <div className="flex justify-between font-bold text-[var(--candy-mint)]">
+                      <span>Discount 🎁</span>
+                      <span className="font-mono">{formatCurrency(person.discount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-lg pt-2 border-t border-green-100">
+                  <div className="flex justify-between border-t-2 border-foreground/20 pt-2 text-lg font-bold">
                     <span>Total</span>
-                    <span>{formatCurrency(person.total, currentReceipt.currency)}</span>
+                    <span className="font-mono text-[var(--candy-pink)]">{formatCurrency(person.total, currentReceipt.currency)}</span>
                   </div>
                   {person.totalIdr && (
-                    <div className="flex justify-between text-sm text-gray-500 pt-1">
+                    <div className="flex justify-between pt-1 text-sm text-foreground/60">
                       <span>In IDR</span>
-                      <span>{formatCurrency(person.totalIdr)}</span>
+                      <span className="font-mono">{formatCurrency(person.totalIdr)}</span>
                     </div>
                   )}
                 </div>
@@ -2231,7 +2265,7 @@ export default function SplitBillTool() {
             ))}
           </div>
 
-          <div className="rounded-3xl border-2 border-green-100 bg-white p-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 rounded-xl border-2 border-foreground bg-[#a78bfa]/15 p-5 shadow-[3px_3px_0_var(--ink)]">
             {/* Unassigned Items Section */}
             {(() => {
               const unassignedItems = currentReceipt.items.filter(
@@ -2243,20 +2277,20 @@ export default function SplitBillTool() {
               const unassignedTotal = unassignedItems.reduce((sum, item) => sum + item.total, 0);
 
               return (
-                <div className="mb-4 p-4 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200">
-                  <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2">
-                    <span>⚠️</span> Unassigned Items
+                <div className="mb-4 rounded-xl border-2 border-dashed border-foreground bg-[#ffc94d]/40 p-4">
+                  <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-foreground">
+                    🍩 Unassigned items
                   </h3>
-                  <div className="space-y-2 text-sm text-gray-400">
+                  <div className="space-y-2 text-sm text-foreground/70">
                     {unassignedItems.map((item, index) => (
                       <div key={`unassigned-${index}`} className="flex justify-between">
                         <span>{item.name}</span>
-                        <span>{formatCurrency(item.total, currentReceipt.currency)}</span>
+                        <span className="font-mono">{formatCurrency(item.total, currentReceipt.currency)}</span>
                       </div>
                     ))}
-                    <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-semibold">
+                    <div className="mt-2 flex justify-between border-t-2 border-foreground/30 pt-2 font-bold text-foreground">
                       <span>Unassigned Total</span>
-                      <span>{formatCurrency(unassignedTotal, currentReceipt.currency)}</span>
+                      <span className="font-mono">{formatCurrency(unassignedTotal, currentReceipt.currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -2265,17 +2299,19 @@ export default function SplitBillTool() {
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <p className="text-sm text-gray-500">All done!</p>
-                <p className="text-2xl font-black">
-                  Total paid ·{" "}
-                  {formatCurrency(
-                    results.reduce((sum, person) => sum + person.total, 0)
-                  )}
+                <p className="mono-label">🎉 split complete</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">
+                  Total paid{" "}
+                  <span className="font-mono text-[var(--candy-pink)]">
+                    {formatCurrency(
+                      results.reduce((sum, person) => sum + person.total, 0)
+                    )}
+                  </span>
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" onClick={shareResults}>
-                  Share bill
+                  Share the damage 📤
                 </Button>
                 <Button onClick={handleStartOver}>Start another receipt</Button>
               </div>
@@ -2285,22 +2321,27 @@ export default function SplitBillTool() {
       )}
 
       {showCropModal && previewUrl && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-4xl p-6 space-y-4 border-2 border-pink-200 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
+          <div className="card-surface w-full max-w-4xl space-y-4 p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                ✂️ Crop receipt
+              <h3 className="text-lg font-bold text-foreground">
+                Crop receipt ✂️
               </h3>
-              <button onClick={() => setShowCropModal(false)}>✕</button>
+              <button
+                className="text-foreground/50 transition-colors hover:text-foreground"
+                onClick={() => setShowCropModal(false)}
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-sm text-gray-500">
-              Drag each handle to outline the receipt edges. Kirby will trim
-              everything outside of your pink polygon.
+            <p className="text-sm text-foreground/60">
+              Drag each handle to outline the receipt edges. Everything outside
+              the selection is trimmed before OCR.
             </p>
             <div className="mx-auto" style={{ maxWidth: "min(90vw, 900px)" }}>
               <div
                 ref={cropAreaRef}
-                className="relative inline-block overflow-hidden rounded-2xl bg-gray-100 shadow-inner touch-none"
+                className="relative inline-block touch-none overflow-hidden rounded-xl border-2 border-foreground bg-secondary"
                 style={{ maxHeight: "70vh" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2324,8 +2365,8 @@ export default function SplitBillTool() {
                         points={displayPolygonPoints
                           .map((point) => `${point.x},${point.y}`)
                           .join(" ")}
-                        fill="rgba(236, 72, 153, 0.2)"
-                        stroke="#ec4899"
+                        fill="rgba(255, 111, 165, 0.15)"
+                        stroke="#ff6fa5"
                         strokeWidth={2}
                         strokeLinejoin="round"
                       />
@@ -2337,7 +2378,7 @@ export default function SplitBillTool() {
                         onPointerDown={(event) =>
                           handleHandlePointerDown(event, index)
                         }
-                        className="absolute w-4 h-4 -mt-2 -ml-2 rounded-full border-2 border-pink-500 bg-white shadow pointer-events-auto cursor-grab active:cursor-grabbing"
+                        className="absolute w-4 h-4 -mt-2 -ml-2 rounded-full border-2 border-[#ff6fa5] bg-card shadow pointer-events-auto cursor-grab active:cursor-grabbing"
                         style={{
                           left: `${point.x}px`,
                           top: `${point.y}px`,
@@ -2353,13 +2394,13 @@ export default function SplitBillTool() {
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-gray-500">
+              <div className="font-mono text-xs text-foreground/60">
                 {selectionDisplayInfo ? (
                   <>
                     Selection: {selectionDisplayInfo.width} ×{" "}
                     {selectionDisplayInfo.height}px
                     {selectionNaturalInfo && (
-                      <span className="text-gray-400">
+                      <span className="text-foreground/40">
                         {" "}
                         ({selectionNaturalInfo.width} ×{" "}
                         {selectionNaturalInfo.height}px source)
@@ -2367,7 +2408,7 @@ export default function SplitBillTool() {
                     )}
                   </>
                 ) : (
-                  "Drag the pink handles to create a selection"
+                  "Drag the handles to create a selection"
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -2400,18 +2441,23 @@ export default function SplitBillTool() {
       )}
 
       {showConfigModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg p-6 border-2 border-pink-200 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
+          <div className="card-surface w-full max-w-lg space-y-4 p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Kirby AI Configuration
+              <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <Settings className="h-5 w-5 text-[var(--candy-pink)]" />
+                AI Configuration 🤖
               </h3>
-              <button onClick={() => setShowConfigModal(false)}>✕</button>
+              <button
+                className="text-foreground/50 transition-colors hover:text-foreground"
+                onClick={() => setShowConfigModal(false)}
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-foreground/60">
               Keys are stored locally in your browser. Nothing is sent to our
-              server.
+              server — pinky promise.
             </p>
             <div className="space-y-4">
               <div>
@@ -2448,7 +2494,7 @@ export default function SplitBillTool() {
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="mt-2 text-xs text-foreground/60">
                   Choose Azure for GPT-5-mini or Gemini for Google&apos;s vision-enabled model.
                 </p>
               </div>
@@ -2536,7 +2582,7 @@ export default function SplitBillTool() {
                     <Label htmlFor="geminiModel">Gemini Model</Label>
                     <select
                       id="geminiModel"
-                      className="w-full p-3 rounded-full border-2 border-pink-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                      className="field-input"
                       value={configDraft.geminiModel}
                       onChange={(e) =>
                         setConfigDraft((prev) => ({
@@ -2583,24 +2629,24 @@ export default function SplitBillTool() {
         )}
 
       {loadingState && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-3xl p-8 border-4 border-pink-200 shadow-2xl text-center space-y-3 max-w-sm">
-            <Loader2 className="h-8 w-8 animate-spin text-pink-500 mx-auto" />
-            <p className="text-xl font-black">{loadingState.text}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 backdrop-blur-sm">
+          <div className="card-surface max-w-sm space-y-3 p-8 text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-[var(--candy-pink)]" />
+            <p className="text-lg font-bold text-foreground">{loadingState.text}</p>
             {loadingState.subtext && (
-              <p className="text-sm text-gray-500">{loadingState.subtext}</p>
+              <p className="text-xs text-foreground/60">{loadingState.subtext}</p>
             )}
           </div>
         </div>
       )}
 
       {errorMessage && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md p-6 border-2 border-red-200 space-y-4 shadow-2xl text-center">
-            <p className="text-3xl">😅</p>
-            <p className="text-lg font-semibold">Oops!</p>
-            <p className="text-sm text-gray-500">{errorMessage}</p>
-            <Button onClick={() => setErrorMessage(null)}>Got it</Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border-2 border-foreground bg-red-100 p-6 text-center shadow-[5px_5px_0_var(--ink)]">
+            <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-red-700">oops! 😬</p>
+            <p className="text-lg font-bold text-foreground">Something went wrong</p>
+            <p className="text-sm font-bold text-red-700">{errorMessage}</p>
+            <Button onClick={() => setErrorMessage(null)}>Dismiss</Button>
           </div>
         </div>
       )}
@@ -2629,32 +2675,40 @@ function AssignmentModal({
     0
   );
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl p-6 border-2 border-amber-200 space-y-4 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
+      <div className="card-surface w-full max-w-2xl space-y-4 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold">{item.name}</h3>
+            <h3 className="text-lg font-bold text-foreground">{item.name}</h3>
             {item.translatedName && (
-              <p className="text-sm text-amber-600 mt-1">
-                🌐 {item.translatedName}
+              <p className="mt-1 text-sm text-foreground/60">
+                {item.translatedName}
               </p>
             )}
-            <p className="text-sm text-gray-500">
-              {formatCurrency(item.total)} · Assign people & percentages
+            <p className="text-sm text-foreground/60">
+              <span className="font-mono font-bold text-[var(--candy-pink)]">{formatCurrency(item.total)}</span>
+              {" — who's in on this one?"}
             </p>
           </div>
-          <button onClick={onClose}>✕</button>
+          <button
+            className="text-foreground/50 transition-colors hover:text-foreground"
+            onClick={onClose}
+          >
+            ✕
+          </button>
         </div>
 
         <div
           className={cn(
-            "rounded-2xl p-4 border",
+            "rounded-xl border-2 border-foreground p-4 text-sm font-bold text-foreground shadow-[2px_2px_0_var(--ink)]",
             Math.abs(totalPercentage - 100) < 0.1
-              ? "bg-green-50 border-green-200 text-green-700"
-              : "bg-amber-50 border-amber-200 text-amber-700"
+              ? "bg-[#4cd4a9]/30"
+              : "bg-[#ffc94d]/40"
           )}
         >
-          Total percentage: {totalPercentage.toFixed(1)}%
+          Total percentage:{" "}
+          <span className="font-mono">{totalPercentage.toFixed(1)}%</span>
+          {Math.abs(totalPercentage - 100) < 0.1 ? " 🎯" : " — needs to hit 100%"}
         </div>
 
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
@@ -2665,23 +2719,28 @@ function AssignmentModal({
               <div
                 key={person.name}
                 className={cn(
-                  "rounded-2xl border p-4 space-y-3",
-                  assigned ? "border-amber-200 bg-amber-50" : "border-gray-200"
+                  "space-y-3 rounded-xl border-2 p-4",
+                  assigned
+                    ? "border-foreground bg-[#4cd4a9]/15 shadow-[2px_2px_0_var(--ink)]"
+                    : "border-foreground/30 bg-card"
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white"
+                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-foreground font-bold text-white shadow-[2px_2px_0_var(--ink)]"
                       style={{ backgroundColor: person.color }}
                     >
                       {person.name[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-semibold">{person.name}</p>
+                      <p className="font-bold text-foreground">{person.name}</p>
                       {assigned && (
-                        <p className="text-xs text-gray-500">
-                          Share {formatCurrency(item.total * (percentage / 100))}
+                        <p className="text-xs text-foreground/60">
+                          Share{" "}
+                          <span className="font-mono">
+                            {formatCurrency(item.total * (percentage / 100))}
+                          </span>
                         </p>
                       )}
                     </div>
@@ -2703,7 +2762,7 @@ function AssignmentModal({
                       onChange={(e) =>
                         onChangePercentage(person.name, Number(e.target.value))
                       }
-                      className="w-full accent-amber-500"
+                      className="w-full accent-[#ff6fa5]"
                     />
                     <div className="flex items-center gap-2 text-sm">
                       <Input
@@ -2714,10 +2773,10 @@ function AssignmentModal({
                         onChange={(e) =>
                           onChangePercentage(person.name, Number(e.target.value))
                         }
-                        className="w-20"
+                        className="w-20 font-mono"
                       />
-                      <span>%</span>
-                      <span className="ml-auto font-semibold">
+                      <span className="text-foreground/60">%</span>
+                      <span className="ml-auto font-mono font-bold text-[var(--candy-pink)]">
                         {formatCurrency(item.total * (percentage / 100))}
                       </span>
                     </div>

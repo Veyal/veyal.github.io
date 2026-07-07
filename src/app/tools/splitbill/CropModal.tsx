@@ -214,22 +214,22 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
   } : null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-4xl p-6 space-y-4 border-2 border-pink-200 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
+      <div className="card-surface w-full max-w-4xl space-y-4 p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            ✂️ Crop receipt
+          <h3 className="text-lg font-bold text-foreground">
+            Crop receipt ✂️
           </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="text-foreground/50 transition-colors hover:text-foreground">✕</button>
         </div>
-        <p className="text-sm text-gray-500">
-          Drag each handle to outline the receipt edges. Kirby will trim
-          everything outside of your pink polygon.
+        <p className="text-sm text-foreground/60">
+          Drag each handle to outline the receipt edges. Everything outside the
+          selection is trimmed before OCR.
         </p>
         <div className="mx-auto" style={{ maxWidth: "min(90vw, 900px)" }}>
           <div
             ref={cropAreaRef}
-            className="relative inline-block overflow-hidden rounded-2xl bg-gray-100 shadow-inner touch-none select-none"
+            className="relative inline-block touch-none select-none overflow-hidden rounded-xl border-2 border-foreground bg-secondary"
             style={{ maxHeight: "70vh" }}
           >
             <img
@@ -252,8 +252,8 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                     points={displayPolygonPoints
                       .map((point) => `${point.x},${point.y}`)
                       .join(" ")}
-                    fill="rgba(236, 72, 153, 0.2)"
-                    stroke="#ec4899"
+                    fill="rgba(255, 111, 165, 0.15)"
+                    stroke="#ff6fa5"
                     strokeWidth={2}
                     strokeLinejoin="round"
                   />
@@ -265,10 +265,10 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                     onPointerDown={(event) => handleHandlePointerDown(event, index)}
                     className={cn(
                       "absolute w-6 h-6 -mt-3 -ml-3 rounded-full border-2 shadow-lg pointer-events-auto transition-all duration-150 z-10",
-                      "hover:scale-110 focus:scale-110 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2",
+                      "hover:scale-110 focus:scale-110 focus:outline-none focus:ring-2 focus:ring-[#ff6fa5] focus:ring-offset-2 focus:ring-offset-background",
                       activeHandle === index
-                        ? "border-pink-600 bg-pink-100 shadow-xl scale-110 cursor-grabbing"
-                        : "border-pink-500 bg-white cursor-grab hover:border-pink-600"
+                        ? "border-[#ff6fa5] bg-[#ff6fa5]/30 shadow-xl scale-110 cursor-grabbing"
+                        : "border-[#ff6fa5] bg-card cursor-grab hover:border-[#ff4f92]"
                     )}
                     style={{
                       left: `${point.x}px`,
@@ -287,10 +287,10 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-gray-500">
+          <div className="font-mono text-xs text-foreground/60">
             Selection: {selectionDisplayInfo.width} × {selectionDisplayInfo.height}px
             {selectionNaturalInfo && (
-              <span className="text-gray-400">
+              <span className="text-foreground/40">
                 {" "}
                 ({selectionNaturalInfo.width} × {selectionNaturalInfo.height}px source)
               </span>
