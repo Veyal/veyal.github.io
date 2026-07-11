@@ -381,28 +381,33 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
     : "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2735]/50 px-4 backdrop-blur-sm">
-      <div className="card-surface w-full max-w-4xl space-y-4 p-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-foreground">
-            Crop receipt ✂️
+    <div className="sb-modal-backdrop">
+      <div
+        className="sb-modal sb-modal-wide space-y-4"
+        role="dialog"
+        aria-labelledby="sb-crop-title"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h3 id="sb-crop-title" className="sb-heading text-lg">
+            Crop receipt
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-foreground/50 transition-colors hover:text-foreground"
+            className="sb-icon-btn"
+            aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-[var(--sb-slate)]">
           Drag each handle to outline the receipt edges. Everything outside the
           selection is trimmed before OCR.
         </p>
         <div className="mx-auto" style={{ maxWidth: "min(90vw, 900px)" }}>
           <div
             ref={cropAreaRef}
-            className="relative inline-block touch-none select-none overflow-hidden rounded-xl border-2 border-foreground bg-secondary"
+            className="relative inline-block touch-none select-none overflow-hidden rounded-xl border-2 border-[var(--sb-line)] bg-[var(--sb-paper)]"
             style={{ maxHeight: "70vh" }}
           >
             {/* The crop preview must render the exact object/data URL loaded by the user. */}
@@ -432,8 +437,8 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                   <polygon
                     ref={polygonElRef}
                     points={initialPoints}
-                    fill="rgba(255, 111, 165, 0.08)"
-                    stroke="#ff6fa5"
+                    fill="rgba(196, 92, 38, 0.08)"
+                    stroke="var(--sb-accent)"
                     strokeWidth={2}
                     strokeLinejoin="round"
                   />
@@ -451,7 +456,7 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                     onPointerCancel={handleHandlePointerCancel}
                     className={cn(
                       "absolute z-10 flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full pointer-events-auto touch-none",
-                      "focus:outline-none focus:ring-2 focus:ring-[#ff6fa5] focus:ring-offset-2 focus:ring-offset-background",
+                      "focus:outline-none focus:ring-2 focus:ring-[var(--sb-accent)] focus:ring-offset-2 focus:ring-offset-[var(--sb-card)]",
                       activeHandle === index
                         ? "cursor-grabbing"
                         : "cursor-grab"
@@ -463,8 +468,8 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                   >
                     <span
                       className={cn(
-                        "block h-4 w-4 rounded-full border-2 border-[#ff6fa5] bg-card shadow-lg transition-transform",
-                        activeHandle === index && "scale-110 bg-[#ff6fa5]/30"
+                        "block h-4 w-4 rounded-full border-2 border-[var(--sb-accent)] bg-[var(--sb-card)] shadow-lg transition-transform",
+                        activeHandle === index && "scale-110 bg-[rgba(196,92,38,0.3)]"
                       )}
                     />
                     <span className="sr-only">
@@ -478,9 +483,9 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
-            <div className="font-mono text-xs text-foreground/60">
+            <div className="sb-amount text-xs text-[var(--sb-slate)]">
               Selection: {selectionSize.displayWidth} × {selectionSize.displayHeight}px
-              <span className="text-foreground/40">
+              <span className="text-[var(--sb-slate)]/70">
                 {" "}
                 ({selectionSize.sourceWidth} × {selectionSize.sourceHeight}px source)
               </span>
