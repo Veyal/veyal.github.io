@@ -1,30 +1,23 @@
-export type CropPoint = {
-  u: number;
-  v: number;
-};
+export type CropPoint = { u: number; v: number };
 
-export type KirbyQualityMode = "economy" | "balanced" | "precision" | "ultra";
-
-export type KirbyProvider = "azure" | "gemini";
-
-export type KirbyAiConfig = {
-  endpoint: string;
+export type OpenAiConfig = {
+  baseUrl: string;
   apiKey: string;
-  apiVersion: string;
-  deployment: string;
-  provider: KirbyProvider;
-  geminiApiKey: string;
-  geminiModel: string;
-  qualityMode: KirbyQualityMode;
+  model: string;
 };
 
-export type ExtraCharge = {
-  name: string;
-  amount: number;
+export type TokenUsage = {
+  provider: "openai";
+  totalTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
 };
+
+export type ExtraCharge = { name: string; amount: number };
 
 export type ReceiptItem = {
   name: string;
+  translatedName?: string;
   quantity: number;
   price: number;
   total: number;
@@ -50,16 +43,14 @@ export type ReceiptData = {
   error?: string;
 };
 
-export type Person = {
-  name: string;
-  color: string;
-};
+export type Person = { name: string; color: string };
 
 export type PersonShare = {
   name: string;
   color: string;
   items: {
     name: string;
+    translatedName?: string;
     quantity: number;
     price: number;
     percentage: number;
@@ -74,4 +65,3 @@ export type PersonShare = {
 };
 
 export type Step = "upload" | "review" | "people" | "assignment" | "results";
-

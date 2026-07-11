@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "next build && touch out/.nojekyll && npx gh-pages -d out"
+    "deploy": "next build && node -e \"require('fs').writeFileSync('out/.nojekyll','')\" && npx gh-pages -d out --dotfiles"
   },
   "homepage": "https://veyal.github.io/",
   "dependencies": {

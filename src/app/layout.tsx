@@ -14,8 +14,17 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Veyal Personal Web",
-  description: "Personal Website for Veyal",
+  title: "Andrew Salim (@Veyal) — friendly neighborhood hacker",
+  description:
+    "Hi, I'm Andrew! I hack things for a living (nicely). OSCP, OSWE & GMOB certified security person, tool tinkerer, and professional button presser. Come play with my free browser tools!",
+  metadataBase: new URL("https://veyal.github.io"),
+  openGraph: {
+    title: "Andrew Salim (@Veyal) — friendly neighborhood hacker",
+    description:
+      "I hack things for a living (nicely). Security person, tool tinkerer, professional button presser — with free browser tools to play with.",
+    url: "https://veyal.github.io",
+    images: ["/profile.png"],
+  },
 };
 
 export default function RootLayout({
@@ -25,53 +34,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* Game World Background */}
-        <div className="game-world">
-          <div className="layer-1"></div>
-          <div className="layer-2"></div>
-          <div className="layer-3">
-            {/* Floating Stars */}
-            <div className="floating-star" style={{ top: '10%', left: '15%', animationDelay: '0s' }}>⭐</div>
-            <div className="floating-star" style={{ top: '30%', right: '20%', animationDelay: '1s' }}>✨</div>
-            <div className="floating-star" style={{ top: '60%', left: '10%', animationDelay: '2s' }}>⭐</div>
-            <div className="floating-star" style={{ top: '80%', right: '15%', animationDelay: '1.5s' }}>✨</div>
-            <div className="floating-star" style={{ top: '45%', left: '40%', animationDelay: '0.5s' }}>⭐</div>
-            
-            {/* Warp Stars */}
-            <div className="warp-star" style={{ top: '20%', left: '80%' }}></div>
-            <div className="warp-star" style={{ bottom: '30%', left: '20%', animationDelay: '1.5s' }}></div>
-            
-            {/* Bubbles */}
-            <div className="bubble" style={{ width: '40px', height: '40px', top: '70%', left: '5%', animationDelay: '0s' }}></div>
-            <div className="bubble" style={{ width: '30px', height: '30px', top: '40%', right: '10%', animationDelay: '2s' }}></div>
-            <div className="bubble" style={{ width: '50px', height: '50px', bottom: '20%', right: '30%', animationDelay: '1s' }}></div>
-            <div className="bubble" style={{ width: '25px', height: '25px', top: '15%', left: '50%', animationDelay: '3s' }}></div>
-            
-            {/* Dream Clouds */}
-            <div className="dream-cloud" style={{ top: '10%', left: '30%', animationDelay: '0s' }}></div>
-            <div className="dream-cloud" style={{ top: '50%', right: '20%', animationDelay: '5s' }}></div>
-            <div className="dream-cloud" style={{ bottom: '15%', left: '60%', animationDelay: '10s' }}></div>
-            
-            {/* Rainbow Streaks */}
-            <div className="rainbow-streak" style={{ width: '100px', top: '25%', animationDelay: '0s' }}></div>
-            <div className="rainbow-streak" style={{ width: '80px', top: '75%', animationDelay: '1.5s' }}></div>
-            
-            {/* Power-ups */}
-            <div className="power-up" style={{ top: '35%', left: '25%', animationDelay: '0s' }}></div>
-            <div className="power-up" style={{ bottom: '40%', right: '35%', animationDelay: '1s' }}></div>
-            
-            {/* Platforms */}
-            <div className="platform" style={{ width: '120px', height: '20px', bottom: '25%', left: '10%' }}></div>
-            <div className="platform" style={{ width: '100px', height: '20px', bottom: '45%', right: '25%' }}></div>
-            
-            {/* Castle Silhouette */}
-            <div className="castle-silhouette"></div>
-          </div>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* Confetti-paper backdrop with floating doodles */}
+        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+          <div className="absolute inset-0 bg-background" />
+          <div className="absolute inset-0 bg-grid" />
+          <span className="absolute left-[6%] top-[12%] text-3xl opacity-40 animate-float">✦</span>
+          <span className="absolute right-[10%] top-[20%] text-2xl opacity-40 animate-float" style={{ animationDelay: "1s" }}>★</span>
+          <span className="absolute left-[14%] bottom-[18%] text-2xl opacity-30 animate-float" style={{ animationDelay: "2s" }}>♥</span>
+          <span className="absolute right-[18%] bottom-[10%] text-3xl opacity-30 animate-float" style={{ animationDelay: "0.5s" }}>✦</span>
+          <span className="absolute left-[45%] top-[6%] text-xl opacity-30 animate-float" style={{ animationDelay: "1.5s" }}>✧</span>
         </div>
-        
         {children}
       </body>
     </html>

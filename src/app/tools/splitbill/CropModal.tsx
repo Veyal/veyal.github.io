@@ -1,15 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CropPoint } from "./types";
-
-interface CropModalProps {
-  imageUrl: string;
-  initialPolygon: CropPoint[];
-  onClose: () => void;
-  onApply: (croppedFile: File) => Promise<void>;
-}
+import type { CropPoint } from "./types";
 
 const DEFAULT_CROP_POLYGON: CropPoint[] = [
   { u: 0.02, v: 0.02 },
@@ -21,57 +16,190 @@ const DEFAULT_CROP_POLYGON: CropPoint[] = [
 const cloneDefaultPolygon = () =>
   DEFAULT_CROP_POLYGON.map((point) => ({ ...point }));
 
+const clonePolygon = (polygon?: CropPoint[]) =>
+  polygon?.length ? polygon.map((point) => ({ ...point })) : cloneDefaultPolygon();
+
+const clampUnit = (value: number) => Math.min(Math.max(value, 0), 1);
+const MAX_EDGE = 2048;
+
+type CropModalProps = {
+  imageUrl: string;
+  initialPolygon?: CropPoint[];
+  onClose: () => void;
+  onApply: (croppedFile: File) => void | Promise<void>;
+};
+
+type SelectionSize = {
+  displayWidth: number;
+  displayHeight: number;
+  sourceWidth: number;
+  sourceHeight: number;
+};
+
+const getPolygonBounds = (polygon: CropPoint[]) => {
+  const us = polygon.map((point) => point.u);
+  const vs = polygon.map((point) => point.v);
+
+  return {
+    minU: Math.min(...us),
+    maxU: Math.max(...us),
+    minV: Math.min(...vs),
+    maxV: Math.max(...vs),
+  };
+};
+
+const toSvgPoints = (polygon: CropPoint[], width: number, height: number) =>
+  polygon.map((point) => `${point.u * width},${point.v * height}`).join(" ");
+
+const toEvenOddPath = (polygon: CropPoint[], width: number, height: number) => {
+  const points = polygon.map((point) => ({
+    x: point.u * width,
+    y: point.v * height,
+  }));
+  const innerPath = points
+    .map((point, index) =>
+      `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
+    )
+    .join(" ");
+
+  return `M 0 0 H ${width} V ${height} H 0 Z ${innerPath} Z`;
+};
+
+const getCroppedFileName = (imageUrl: string) => {
+  try {
+    const pathName = new URL(imageUrl, window.location.href).pathname;
+    const fileName = decodeURIComponent(pathName.split("/").pop() || "");
+    const baseName = fileName.replace(/\.[^.]+$/, "") || "receipt";
+
+    return `${baseName}-cropped.jpg`;
+  } catch {
+    return "receipt-cropped.jpg";
+  }
+};
+
 export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropModalProps) {
-  const [cropPolygon, setCropPolygon] = useState<CropPoint[]>(
-    initialPolygon.length ? initialPolygon : cloneDefaultPolygon()
+  const [cropPolygon, setCropPolygon] = useState<CropPoint[]>(() =>
+    clonePolygon(initialPolygon)
   );
   const [activeHandle, setActiveHandle] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [cropAreaSize, setCropAreaSize] = useState({ width: 0, height: 0 });
-  
+  const [selectionSize, setSelectionSize] = useState<SelectionSize>({
+    displayWidth: 0,
+    displayHeight: 0,
+    sourceWidth: 0,
+    sourceHeight: 0,
+  });
+  const [applyError, setApplyError] = useState<string | null>(null);
+
   const cropAreaRef = useRef<HTMLDivElement>(null);
   const cropImageRef = useRef<HTMLImageElement>(null);
+  const polygonRef = useRef<CropPoint[]>(clonePolygon(initialPolygon));
+  const handlesRef = useRef<Array<HTMLButtonElement | null>>([]);
+  const polygonElRef = useRef<SVGPolygonElement>(null);
+  const dimPathRef = useRef<SVGPathElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const activePointerRef = useRef<{ index: number; pointerId: number } | null>(
+    null
+  );
+
+  const writePolygonToDom = useCallback((polygon: CropPoint[]) => {
+    const container = cropAreaRef.current;
+    if (!container) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (!width || !height) return;
+
+    polygonElRef.current?.setAttribute(
+      "points",
+      toSvgPoints(polygon, width, height)
+    );
+    dimPathRef.current?.setAttribute("d", toEvenOddPath(polygon, width, height));
+
+    polygon.forEach((point, index) => {
+      const handle = handlesRef.current[index];
+      if (!handle) return;
+
+      handle.style.left = `${point.u * width}px`;
+      handle.style.top = `${point.v * height}px`;
+    });
+  }, []);
+
+  const scheduleDomUpdate = useCallback(() => {
+    if (rafRef.current !== null) return;
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null;
+      writePolygonToDom(polygonRef.current);
+    });
+  }, [writePolygonToDom]);
+
+  const updateSelectionSize = useCallback((polygon: CropPoint[]) => {
+    const container = cropAreaRef.current;
+    const image = cropImageRef.current;
+    if (!container || !image) return;
+
+    const bounds = getPolygonBounds(polygon);
+
+    setSelectionSize({
+      displayWidth: Math.round((bounds.maxU - bounds.minU) * container.clientWidth),
+      displayHeight: Math.round(
+        (bounds.maxV - bounds.minV) * container.clientHeight
+      ),
+      sourceWidth: Math.round((bounds.maxU - bounds.minU) * image.naturalWidth),
+      sourceHeight: Math.round((bounds.maxV - bounds.minV) * image.naturalHeight),
+    });
+  }, []);
 
   const refreshCropAreaSize = useCallback(() => {
     const container = cropAreaRef.current;
     if (!container) return;
-    const bounds = container.getBoundingClientRect();
+
     setCropAreaSize({
-      width: bounds.width,
-      height: bounds.height,
+      width: container.clientWidth,
+      height: container.clientHeight,
     });
-  }, []);
+    writePolygonToDom(polygonRef.current);
+    updateSelectionSize(polygonRef.current);
+  }, [updateSelectionSize, writePolygonToDom]);
 
-  useEffect(() => {
-    refreshCropAreaSize();
-    window.addEventListener("resize", refreshCropAreaSize);
-    return () => window.removeEventListener("resize", refreshCropAreaSize);
-  }, [refreshCropAreaSize]);
-
-  // Update crop area size when image loads
-  const handleImageLoad = () => {
-    refreshCropAreaSize();
-  };
-
-  const updateHandlePosition = useCallback(
+  const setPointFromPointer = useCallback(
     (index: number, clientX: number, clientY: number) => {
       const container = cropAreaRef.current;
       if (!container) return;
+
       const bounds = container.getBoundingClientRect();
       if (!bounds.width || !bounds.height) return;
 
-      const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
-      const u = clamp((clientX - bounds.left) / bounds.width);
-      const v = clamp((clientY - bounds.top) / bounds.height);
-
-      setCropPolygon((prev) => {
-        const next = [...prev];
-        next[index] = { u, v };
-        return next;
-      });
+      const nextPolygon = polygonRef.current.map((point) => ({ ...point }));
+      nextPolygon[index] = {
+        u: clampUnit((clientX - bounds.left) / bounds.width),
+        v: clampUnit((clientY - bounds.top) / bounds.height),
+      };
+      polygonRef.current = nextPolygon;
+      scheduleDomUpdate();
     },
-    []
+    [scheduleDomUpdate]
   );
+
+  const commitLivePolygon = useCallback(() => {
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    const nextPolygon = polygonRef.current.map((point) => ({ ...point }));
+    writePolygonToDom(nextPolygon);
+    setCropPolygon(nextPolygon);
+    setActiveHandle(null);
+    activePointerRef.current = null;
+    updateSelectionSize(nextPolygon);
+  }, [updateSelectionSize, writePolygonToDom]);
+
+  const handleImageLoad = useCallback(() => {
+    refreshCropAreaSize();
+  }, [refreshCropAreaSize]);
 
   const handleHandlePointerDown = (
     event: React.PointerEvent<HTMLButtonElement>,
@@ -79,159 +207,211 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    updateHandlePosition(index, event.clientX, event.clientY);
+
+    polygonRef.current = cropPolygon.map((point) => ({ ...point }));
+    activePointerRef.current = { index, pointerId: event.pointerId };
     setActiveHandle(index);
-    // Capture pointer for better touch/mouse handling
-    try {
-      (event.target as HTMLElement).setPointerCapture(event.pointerId);
-    } catch (error) {
-      // Fallback for browsers that don't support pointer capture
-      console.warn('Pointer capture not supported');
-    }
+    setPointFromPointer(index, event.clientX, event.clientY);
+
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  useEffect(() => {
-    if (activeHandle === null) return;
-    
-    const handlePointerMove = (event: PointerEvent) => {
-      event.preventDefault();
-      updateHandlePosition(activeHandle, event.clientX, event.clientY);
-    };
+  const handleHandlePointerMove = (
+    event: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    const activePointer = activePointerRef.current;
+    if (!activePointer || activePointer.pointerId !== event.pointerId) return;
 
-    const stopDragging = () => setActiveHandle(null);
+    event.preventDefault();
+    setPointFromPointer(activePointer.index, event.clientX, event.clientY);
+  };
 
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-    
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [activeHandle, updateHandlePosition]);
+  const handleHandlePointerUp = (
+    event: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    const activePointer = activePointerRef.current;
+    if (!activePointer || activePointer.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    commitLivePolygon();
+  };
+
+  const handleHandlePointerCancel = (
+    event: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    commitLivePolygon();
+  };
 
   const handleResetHandles = () => {
-    setCropPolygon(cloneDefaultPolygon());
+    const nextPolygon = cloneDefaultPolygon();
+    polygonRef.current = nextPolygon;
+    setCropPolygon(nextPolygon);
+    setActiveHandle(null);
+    setApplyError(null);
+    writePolygonToDom(nextPolygon);
+    updateSelectionSize(nextPolygon);
   };
 
   const handleApply = async () => {
     if (isApplying) return;
+
+    const imageElement = cropImageRef.current;
+    if (!imageElement) {
+      setApplyError("Image is still loading. Try again in a moment.");
+      return;
+    }
+
+    setApplyError(null);
     setIsApplying(true);
-    
+
     try {
-        const imageElement = cropImageRef.current;
-        if (!imageElement) throw new Error("Image not loaded");
+      const polygon = polygonRef.current.length ? polygonRef.current : cropPolygon;
+      const naturalWidth = imageElement.naturalWidth;
+      const naturalHeight = imageElement.naturalHeight;
+      const sourcePoints = polygon.map((point) => ({
+        x: point.u * naturalWidth,
+        y: point.v * naturalHeight,
+      }));
 
-        const polygon = cropPolygon;
-        const naturalWidth = imageElement.naturalWidth;
-        const naturalHeight = imageElement.naturalHeight;
+      const minX = Math.max(0, Math.floor(Math.min(...sourcePoints.map((p) => p.x))));
+      const maxX = Math.min(
+        naturalWidth,
+        Math.ceil(Math.max(...sourcePoints.map((p) => p.x)))
+      );
+      const minY = Math.max(0, Math.floor(Math.min(...sourcePoints.map((p) => p.y))));
+      const maxY = Math.min(
+        naturalHeight,
+        Math.ceil(Math.max(...sourcePoints.map((p) => p.y)))
+      );
+      const sw = maxX - minX;
+      const sh = maxY - minY;
 
-        const scaledPoints = polygon.map((point) => ({
-            x: point.u * naturalWidth,
-            y: point.v * naturalHeight,
-        }));
+      if (sw < 10 || sh < 10) {
+        throw new Error("Crop selection must be at least 10px wide and tall.");
+      }
 
-        const xs = scaledPoints.map((p) => p.x);
-        const ys = scaledPoints.map((p) => p.y);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        const sw = Math.round(maxX - minX);
-        const sh = Math.round(maxY - minY);
+      const scale = Math.min(1, MAX_EDGE / Math.max(sw, sh));
+      const dw = Math.max(1, Math.round(sw * scale));
+      const dh = Math.max(1, Math.round(sh * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = dw;
+      canvas.height = dh;
 
-        if (sw < 10 || sh < 10) {
-            throw new Error("Crop selection is too small.");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not create crop canvas.");
+
+      ctx.save();
+      ctx.beginPath();
+      sourcePoints.forEach((point, index) => {
+        const x = (point.x - minX) * scale;
+        const y = (point.y - minY) * scale;
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
+      });
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(imageElement, minX, minY, sw, sh, 0, 0, dw, dh);
+      ctx.restore();
 
-        const canvas = document.createElement("canvas");
-        canvas.width = sw;
-        canvas.height = sh;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Could not get canvas context");
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, dw, dh);
 
-        ctx.save();
-        ctx.beginPath();
-        scaledPoints.forEach((point, index) => {
-            const dx = point.x - minX;
-            const dy = point.y - minY;
-            if (index === 0) ctx.moveTo(dx, dy);
-            else ctx.lineTo(dx, dy);
-        });
-        ctx.closePath();
-        ctx.clip();
-        
-        ctx.drawImage(imageElement, minX, minY, sw, sh, 0, 0, sw, sh);
-        ctx.restore();
-        
-        // Fill background (in case of transparency)
-        ctx.globalCompositeOperation = "destination-over";
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, sw, sh);
-
-        // Use toBlob instead of toDataURL for better performance
-        canvas.toBlob((blob) => {
-            if (blob) {
-                const file = new File([blob], "cropped-receipt.png", { type: "image/png" });
-                onApply(file).finally(() => setIsApplying(false));
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (nextBlob) => {
+            if (nextBlob) {
+              resolve(nextBlob);
             } else {
-                setIsApplying(false);
+              reject(new Error("Could not encode cropped image."));
             }
-        }, "image/png", 1.0);
+          },
+          "image/jpeg",
+          0.92
+        );
+      });
 
+      await onApply(
+        new File([blob], getCroppedFileName(imageUrl), {
+          type: "image/jpeg",
+        })
+      );
     } catch (error) {
-        console.error(error);
-        setIsApplying(false);
+      setApplyError(
+        error instanceof Error ? error.message : "Could not crop the image."
+      );
+    } finally {
+      setIsApplying(false);
     }
   };
 
-  // Render helpers
-  const polygonForRendering = cropPolygon;
-  const displayPolygonPoints =
-    cropAreaSize.width > 0 && cropAreaSize.height > 0
-      ? polygonForRendering.map((point) => ({
-          x: point.u * cropAreaSize.width,
-          y: point.v * cropAreaSize.height,
-        }))
-      : [];
+  useEffect(() => {
+    window.addEventListener("resize", refreshCropAreaSize);
+    return () => {
+      window.removeEventListener("resize", refreshCropAreaSize);
+    };
+  }, [refreshCropAreaSize]);
 
-  const polygonBounds = {
-        minU: Math.min(...polygonForRendering.map((point) => point.u)),
-        maxU: Math.max(...polygonForRendering.map((point) => point.u)),
-        minV: Math.min(...polygonForRendering.map((point) => point.v)),
-        maxV: Math.max(...polygonForRendering.map((point) => point.v)),
-  };
-  
-  const selectionDisplayInfo = {
-      width: Math.round((polygonBounds.maxU - polygonBounds.minU) * cropAreaSize.width),
-      height: Math.round((polygonBounds.maxV - polygonBounds.minV) * cropAreaSize.height),
-  };
-  
-  const selectionNaturalInfo = cropImageRef.current ? {
-      width: Math.round((polygonBounds.maxU - polygonBounds.minU) * cropImageRef.current.naturalWidth),
-      height: Math.round((polygonBounds.maxV - polygonBounds.minV) * cropImageRef.current.naturalHeight),
-  } : null;
+  useEffect(() => {
+    writePolygonToDom(cropPolygon);
+  }, [cropAreaSize, cropPolygon, writePolygonToDom]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
+  const hasCropArea = cropAreaSize.width > 0 && cropAreaSize.height > 0;
+  const initialPoints = hasCropArea
+    ? toSvgPoints(cropPolygon, cropAreaSize.width, cropAreaSize.height)
+    : "";
+  const initialDimPath = hasCropArea
+    ? toEvenOddPath(cropPolygon, cropAreaSize.width, cropAreaSize.height)
+    : "";
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-4xl p-6 space-y-4 border-2 border-pink-200 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            ✂️ Crop receipt
+    <div className="sb-modal-backdrop">
+      <div
+        className="sb-modal sb-modal-wide space-y-4"
+        role="dialog"
+        aria-labelledby="sb-crop-title"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h3 id="sb-crop-title" className="sb-heading text-lg">
+            Crop receipt
           </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="sb-icon-btn"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
-        <p className="text-sm text-gray-500">
-          Drag each handle to outline the receipt edges. Kirby will trim
-          everything outside of your pink polygon.
+        <p className="text-sm text-[var(--sb-slate)]">
+          Drag each handle to outline the receipt edges. Everything outside the
+          selection is trimmed before OCR.
         </p>
         <div className="mx-auto" style={{ maxWidth: "min(90vw, 900px)" }}>
           <div
             ref={cropAreaRef}
-            className="relative inline-block overflow-hidden rounded-2xl bg-gray-100 shadow-inner touch-none select-none"
+            className="relative inline-block touch-none select-none overflow-hidden rounded-xl border-2 border-[var(--sb-line)] bg-[var(--sb-paper)]"
             style={{ maxHeight: "70vh" }}
           >
+            {/* The crop preview must render the exact object/data URL loaded by the user. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={cropImageRef}
               src={imageUrl}
@@ -240,7 +420,7 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
               draggable={false}
               onLoad={handleImageLoad}
             />
-            {displayPolygonPoints.length === 4 && (
+            {hasCropArea && (
               <>
                 <svg
                   className="absolute inset-0 pointer-events-none"
@@ -248,35 +428,50 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
                   height={cropAreaSize.height}
                   viewBox={`0 0 ${cropAreaSize.width} ${cropAreaSize.height}`}
                 >
+                  <path
+                    ref={dimPathRef}
+                    d={initialDimPath}
+                    fill="rgba(28,25,23,0.55)"
+                    fillRule="evenodd"
+                  />
                   <polygon
-                    points={displayPolygonPoints
-                      .map((point) => `${point.x},${point.y}`)
-                      .join(" ")}
-                    fill="rgba(236, 72, 153, 0.2)"
-                    stroke="#ec4899"
+                    ref={polygonElRef}
+                    points={initialPoints}
+                    fill="rgba(196, 92, 38, 0.08)"
+                    stroke="var(--sb-accent)"
                     strokeWidth={2}
                     strokeLinejoin="round"
                   />
                 </svg>
-                {displayPolygonPoints.map((point, index) => (
+                {cropPolygon.map((point, index) => (
                   <button
                     key={`handle-${index}`}
+                    ref={(element) => {
+                      handlesRef.current[index] = element;
+                    }}
                     type="button"
                     onPointerDown={(event) => handleHandlePointerDown(event, index)}
+                    onPointerMove={handleHandlePointerMove}
+                    onPointerUp={handleHandlePointerUp}
+                    onPointerCancel={handleHandlePointerCancel}
                     className={cn(
-                      "absolute w-6 h-6 -mt-3 -ml-3 rounded-full border-2 shadow-lg pointer-events-auto transition-all duration-150 z-10",
-                      "hover:scale-110 focus:scale-110 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2",
+                      "absolute z-10 flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full pointer-events-auto touch-none",
+                      "focus:outline-none focus:ring-2 focus:ring-[var(--sb-accent)] focus:ring-offset-2 focus:ring-offset-[var(--sb-card)]",
                       activeHandle === index
-                        ? "border-pink-600 bg-pink-100 shadow-xl scale-110 cursor-grabbing"
-                        : "border-pink-500 bg-white cursor-grab hover:border-pink-600"
+                        ? "cursor-grabbing"
+                        : "cursor-grab"
                     )}
                     style={{
-                      left: `${point.x}px`,
-                      top: `${point.y}px`,
-                      // Add subtle animation for better UX
-                      transform: activeHandle === index ? 'scale(1.1)' : 'scale(1)',
+                      left: `${point.u * cropAreaSize.width}px`,
+                      top: `${point.v * cropAreaSize.height}px`,
                     }}
                   >
+                    <span
+                      className={cn(
+                        "block h-4 w-4 rounded-full border-2 border-[var(--sb-accent)] bg-[var(--sb-card)] shadow-lg transition-transform",
+                        activeHandle === index && "scale-110 bg-[rgba(196,92,38,0.3)]"
+                      )}
+                    />
                     <span className="sr-only">
                       Move crop handle {index + 1}
                     </span>
@@ -287,13 +482,16 @@ export function CropModal({ imageUrl, initialPolygon, onClose, onApply }: CropMo
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-gray-500">
-            Selection: {selectionDisplayInfo.width} × {selectionDisplayInfo.height}px
-            {selectionNaturalInfo && (
-              <span className="text-gray-400">
+          <div className="space-y-1">
+            <div className="sb-amount text-xs text-[var(--sb-slate)]">
+              Selection: {selectionSize.displayWidth} × {selectionSize.displayHeight}px
+              <span className="text-[var(--sb-slate)]/70">
                 {" "}
-                ({selectionNaturalInfo.width} × {selectionNaturalInfo.height}px source)
+                ({selectionSize.sourceWidth} × {selectionSize.sourceHeight}px source)
               </span>
+            </div>
+            {applyError && (
+              <p className="text-xs font-medium text-destructive">{applyError}</p>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
