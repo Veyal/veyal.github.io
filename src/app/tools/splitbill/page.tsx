@@ -12,6 +12,7 @@ import { formatCurrency } from "./format";
 
 import { AiConfigModal } from "./AiConfigModal";
 import { CropModal } from "./CropModal";
+import { AssignmentTotals } from "./AssignmentTotals";
 import { ItemAssignRow } from "./ItemAssignRow";
 import { processImageForOCR } from "./image";
 import {
@@ -1206,7 +1207,7 @@ export default function SplitBillTool() {
             </p>
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--sb-slate)]">
                 Items
@@ -1228,47 +1229,17 @@ export default function SplitBillTool() {
               ))}
             </div>
 
-            <div className="space-y-4 rounded-lg border border-[var(--sb-line)] p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--sb-slate)]">
-                Running totals
-              </p>
-              {assignmentSummary.length ? (
-                assignmentSummary.map((summary) => (
-                  <div
-                    key={summary.name}
-                    className="flex items-center justify-between rounded-md border border-[var(--sb-line)] bg-white p-4"
-                  >
-                    <div>
-                      <p className="font-medium text-[var(--sb-ink)]">
-                        {summary.name}
-                      </p>
-                      <p className="text-xs text-[var(--sb-slate)]">
-                        {summary.count} item{summary.count === 1 ? "" : "s"} assigned
-                      </p>
-                    </div>
-                    <p className="sb-amount font-medium text-[var(--sb-accent)]">
-                      {formatCurrency(summary.subtotal, currentReceipt.currency)}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-[var(--sb-slate)]">
-                  Assign at least one item to each person.
-                </p>
-              )}
-              <Button
-                onClick={calculateSplit}
-                className="w-full"
-                disabled={people.length === 0 || hasUnassignedPricedItems}
-              >
-                Calculate split
-              </Button>
-              {hasUnassignedPricedItems && (
-                <p className="text-xs text-[var(--sb-slate)]">
-                  Assign all priced items to continue. Free (0) items can stay unassigned.
-                </p>
-              )}
-            </div>
+            <AssignmentTotals
+              summary={assignmentSummary}
+              currency={currentReceipt.currency}
+              onCalculate={calculateSplit}
+              calculateDisabled={people.length === 0 || hasUnassignedPricedItems}
+              blockedMessage={
+                hasUnassignedPricedItems
+                  ? "Assign all priced items to continue. Free (0) items can stay unassigned."
+                  : undefined
+              }
+            />
           </div>
 
           <div className="flex flex-wrap justify-between gap-3">
