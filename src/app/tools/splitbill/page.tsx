@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+import { formatCurrency } from "./format";
+
 import { AiConfigModal } from "./AiConfigModal";
 import { AssignmentModal } from "./AssignmentModal";
 import { CropModal } from "./CropModal";
@@ -61,14 +63,6 @@ const COLOR_POOL = [
   "#2f5f8a",
   "#8a6a2f",
 ];
-
-const formatCurrency = (amount: number, currency = "IDR") =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 
 const formatTokenCount = (value?: number) =>
   value != null ? value.toLocaleString() : "unknown";
