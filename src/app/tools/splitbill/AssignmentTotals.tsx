@@ -70,10 +70,10 @@ export function AssignmentTotals({
         {detail}
       </div>
 
-      <div className="sb-totals-bar -mx-6 flex items-center gap-3 border-t border-[var(--sb-line)] bg-[var(--sb-card)] px-6 py-3 lg:hidden">
+      <div className="sb-totals-bar -mx-6 flex min-w-0 items-center gap-3 border-t border-[var(--sb-line)] bg-[var(--sb-card)] px-6 py-3 lg:hidden">
         <button
           type="button"
-          className="flex flex-1 items-center gap-2 overflow-x-auto"
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
           onClick={() => setSheetOpen(true)}
           aria-label="Show running totals"
         >

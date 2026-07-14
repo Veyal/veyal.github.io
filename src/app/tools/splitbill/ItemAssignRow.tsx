@@ -109,7 +109,7 @@ export function ItemAssignRow({
           {expanded && unique.length > 0 && (
             <div className="sb-finetune space-y-2">
               {unique.map((name) => (
-                <div key={name} className="flex items-center gap-2 text-sm">
+                <div key={name} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                   <span className="w-20 truncate text-[var(--sb-ink)]">{name}</span>
                   <Input
                     type="number"
