@@ -7,13 +7,12 @@ import { FileImage, Loader2, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 import { formatCurrency } from "./format";
 
 import { AiConfigModal } from "./AiConfigModal";
-import { AssignmentModal } from "./AssignmentModal";
 import { CropModal } from "./CropModal";
+import { ItemAssignRow } from "./ItemAssignRow";
 import { processImageForOCR } from "./image";
 import {
   DEFAULT_OPENAI_CONFIG,
@@ -166,9 +165,6 @@ export default function SplitBillTool() {
   const [currentReceipt, setCurrentReceipt] = useState<ReceiptData | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [personInput, setPersonInput] = useState("");
-  const [assignmentModalIndex, setAssignmentModalIndex] = useState<number | null>(
-    null
-  );
   const [results, setResults] = useState<PersonShare[] | null>(null);
   const [openAiConfig, setOpenAiConfig] = useState<OpenAiConfig>(
     DEFAULT_OPENAI_CONFIG
@@ -258,7 +254,6 @@ export default function SplitBillTool() {
     setResults(null);
     setOcrMeta(null);
     setPeople([]);
-    setAssignmentModalIndex(null);
     setCurrentStep("upload");
     setTokenUsage(null);
   }, []);
@@ -466,6 +461,31 @@ export default function SplitBillTool() {
         }
       }
 
+      return { ...item, percentages };
+    });
+  };
+
+  const splitItemEvenly = (itemIndex: number) => {
+    updateReceiptItem(itemIndex, (item) => {
+      const names = people.map((person) => person.name);
+      const equal = names.length ? 100 / names.length : 0;
+      const percentages: Record<string, number> = {};
+      names.forEach((name) => {
+        percentages[name] = equal;
+      });
+      return { ...item, assignedTo: names, percentages };
+    });
+  };
+
+  const resetItemToEqual = (itemIndex: number) => {
+    updateReceiptItem(itemIndex, (item) => {
+      const unique = Array.from(new Set(item.assignedTo ?? []));
+      if (!unique.length) return item;
+      const equal = 100 / unique.length;
+      const percentages = { ...item.percentages };
+      unique.forEach((name) => {
+        percentages[name] = equal;
+      });
       return { ...item, percentages };
     });
   };
@@ -1191,58 +1211,21 @@ export default function SplitBillTool() {
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--sb-slate)]">
                 Items
               </p>
-              {currentReceipt.items.map((item, index) => {
-                const unique = Array.from(new Set(item.assignedTo ?? []));
-                const totalPercentage = unique.reduce(
-                  (sum, name) => sum + (item.percentages?.[name] || 0),
-                  0
-                );
-                const isFree = !itemRequiresAssignment(item);
-                return (
-                  <button
-                    key={`${item.name}-${index}`}
-                    onClick={() => setAssignmentModalIndex(index)}
-                    className={cn(
-                      "w-full rounded-lg border px-4 py-4 text-left transition-colors",
-                      unique.length
-                        ? "border-[var(--sb-accent)] bg-[rgba(196,92,38,0.05)]"
-                        : isFree
-                          ? "border-dashed border-[var(--sb-line)] bg-white hover:border-[var(--sb-accent)]"
-                          : "border-[var(--sb-line)] bg-white hover:border-[var(--sb-accent)]"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-[var(--sb-ink)]">
-                          {item.name}
-                        </p>
-                        {item.translatedName && (
-                          <p className="text-xs text-[var(--sb-slate)]">
-                            {item.translatedName}
-                          </p>
-                        )}
-                        <p className="text-sm text-[var(--sb-slate)]">
-                          {unique.length
-                            ? `Assigned to ${unique.join(", ")}`
-                            : isFree
-                              ? "Optional — free item"
-                              : "Tap to assign"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="sb-amount font-medium text-[var(--sb-ink)]">
-                          {formatCurrency(item.total, currentReceipt.currency)}
-                        </p>
-                        {unique.length > 0 && (
-                          <p className="text-xs font-medium text-[var(--sb-accent)]">
-                            {totalPercentage.toFixed(1)}% assigned
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+              {currentReceipt.items.map((item, index) => (
+                <ItemAssignRow
+                  key={`${item.name}-${index}`}
+                  item={item}
+                  people={people}
+                  currency={currentReceipt.currency}
+                  requiresAssignment={itemRequiresAssignment(item)}
+                  onTogglePerson={(personName) => toggleAssignment(index, personName)}
+                  onSplitAll={() => splitItemEvenly(index)}
+                  onChangePercentage={(personName, value) =>
+                    updatePercentage(index, personName, value)
+                  }
+                  onResetEqual={() => resetItemToEqual(index)}
+                />
+              ))}
             </div>
 
             <div className="space-y-4 rounded-lg border border-[var(--sb-line)] p-5">
@@ -1492,23 +1475,6 @@ export default function SplitBillTool() {
         onClose={() => setShowConfigModal(false)}
         onSave={handleSaveConfig}
       />
-
-      {assignmentModalIndex !== null &&
-        currentReceipt &&
-        currentReceipt.items[assignmentModalIndex] && (
-          <AssignmentModal
-            item={currentReceipt.items[assignmentModalIndex]}
-            people={people}
-            currency={currentReceipt.currency}
-            onClose={() => setAssignmentModalIndex(null)}
-            onTogglePerson={(personName) =>
-              toggleAssignment(assignmentModalIndex, personName)
-            }
-            onChangePercentage={(personName, value) =>
-              updatePercentage(assignmentModalIndex, personName, value)
-            }
-          />
-        )}
 
       {loadingState && (
         <div className="sb-modal-backdrop">
