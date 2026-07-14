@@ -43,6 +43,12 @@ const STEP_META: Record<Step, { label: string; description: string }> = {
   results: { label: "Results", description: "Per-person totals" },
 };
 
+/** Free (0-priced) items do not need an assignee. */
+const itemRequiresAssignment = (item: ReceiptItem) => item.total !== 0;
+
+const isItemUnassigned = (item: ReceiptItem) =>
+  !item.assignedTo || item.assignedTo.length === 0;
+
 const COLOR_POOL = [
   "#c45c26",
   "#2f6f6a",
@@ -227,6 +233,13 @@ export default function SplitBillTool() {
       return { ...person, subtotal, count: personItems.length };
     });
   }, [currentReceipt, people]);
+
+  const hasUnassignedPricedItems = useMemo(() => {
+    if (!currentReceipt) return false;
+    return currentReceipt.items.some(
+      (item) => itemRequiresAssignment(item) && isItemUnassigned(item)
+    );
+  }, [currentReceipt]);
 
   const handleFileDrop = useCallback((fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -474,6 +487,17 @@ export default function SplitBillTool() {
       return;
     }
 
+    const unassignedPriced = currentReceipt.items.filter(
+      (item) => itemRequiresAssignment(item) && isItemUnassigned(item)
+    );
+    if (unassignedPriced.length) {
+      setErrorMessage(
+        "Assign every priced item before calculating. Free (0) items can stay unassigned."
+      );
+      setCurrentStep("assignment");
+      return;
+    }
+
     const invalidPercentages = currentReceipt.items.filter((item) => {
       const unique = Array.from(new Set(item.assignedTo ?? []));
       if (!unique.length) return false;
@@ -602,7 +626,7 @@ export default function SplitBillTool() {
     ];
 
     const unassignedItems = currentReceipt.items.filter(
-      (item) => !item.assignedTo || item.assignedTo.length === 0
+      (item) => itemRequiresAssignment(item) && isItemUnassigned(item)
     );
 
     if (unassignedItems.length > 0) {
@@ -1049,7 +1073,11 @@ export default function SplitBillTool() {
                         {item.translatedName}
                       </p>
                     )}
-                    <p className="text-xs text-[var(--sb-slate)]">item #{index + 1}</p>
+                    <p className="text-xs text-[var(--sb-slate)]">
+                      {item.total === 0
+                        ? "Free / note"
+                        : `item #${index + 1}`}
+                    </p>
                   </div>
                   <p className="sb-amount font-medium text-[var(--sb-ink)]">
                     {formatCurrency(item.total, currentReceipt.currency)}
@@ -1160,6 +1188,7 @@ export default function SplitBillTool() {
             <h2 className="sb-heading text-lg">Assign items</h2>
             <p className="text-sm text-[var(--sb-slate)]">
               Select an item to distribute it. Two people auto-balance to 100%.
+              Free (0) items are optional.
             </p>
           </header>
 
@@ -1174,6 +1203,7 @@ export default function SplitBillTool() {
                   (sum, name) => sum + (item.percentages?.[name] || 0),
                   0
                 );
+                const isFree = !itemRequiresAssignment(item);
                 return (
                   <button
                     key={`${item.name}-${index}`}
@@ -1182,7 +1212,9 @@ export default function SplitBillTool() {
                       "w-full rounded-lg border px-4 py-4 text-left transition-colors",
                       unique.length
                         ? "border-[var(--sb-accent)] bg-[rgba(196,92,38,0.05)]"
-                        : "border-[var(--sb-line)] bg-white hover:border-[var(--sb-accent)]"
+                        : isFree
+                          ? "border-dashed border-[var(--sb-line)] bg-white hover:border-[var(--sb-accent)]"
+                          : "border-[var(--sb-line)] bg-white hover:border-[var(--sb-accent)]"
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -1198,7 +1230,9 @@ export default function SplitBillTool() {
                         <p className="text-sm text-[var(--sb-slate)]">
                           {unique.length
                             ? `Assigned to ${unique.join(", ")}`
-                            : "Tap to assign"}
+                            : isFree
+                              ? "Optional — free item"
+                              : "Tap to assign"}
                         </p>
                       </div>
                       <div className="text-right">
@@ -1248,10 +1282,15 @@ export default function SplitBillTool() {
               <Button
                 onClick={calculateSplit}
                 className="w-full"
-                disabled={people.length === 0}
+                disabled={people.length === 0 || hasUnassignedPricedItems}
               >
                 Calculate split
               </Button>
+              {hasUnassignedPricedItems && (
+                <p className="text-xs text-[var(--sb-slate)]">
+                  Assign all priced items to continue. Free (0) items can stay unassigned.
+                </p>
+              )}
             </div>
           </div>
 
@@ -1384,7 +1423,7 @@ export default function SplitBillTool() {
           <div className="flex flex-col gap-4 rounded-lg border border-[var(--sb-line)] p-5">
             {(() => {
               const unassignedItems = currentReceipt.items.filter(
-                (item) => !item.assignedTo || item.assignedTo.length === 0
+                (item) => itemRequiresAssignment(item) && isItemUnassigned(item)
               );
               if (unassignedItems.length === 0) return null;
               const unassignedTotal = unassignedItems.reduce(
