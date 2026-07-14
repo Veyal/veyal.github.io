@@ -28,10 +28,11 @@ export function ItemAssignRow({
   onChangePercentage,
   onResetEqual,
 }: ItemAssignRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [showChips, setShowChips] = useState(requiresAssignment);
-
   const unique = Array.from(new Set(item.assignedTo ?? []));
+
+  const [expanded, setExpanded] = useState(false);
+  const [showChips, setShowChips] = useState(requiresAssignment || unique.length > 0);
+
   const totalPercentage = unique.reduce(
     (sum, name) => sum + (item.percentages?.[name] || 0),
     0

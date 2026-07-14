@@ -117,8 +117,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 2.25rem;
-  width: 2.25rem;
+  height: 2.75rem;
+  width: 2.75rem;
   flex-shrink: 0;
   border-radius: 9999px;
   border: 2px solid var(--sb-line);
@@ -131,7 +131,7 @@
 
 .sb-chip[aria-pressed="true"] {
   border-color: transparent;
-  color: #fffcf7;
+  color: var(--sb-card);
 }
 
 .sb-chip-row {

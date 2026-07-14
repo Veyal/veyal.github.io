@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import type { Person } from "./types";
 
 type PersonChipProps = {
@@ -13,7 +12,7 @@ export function PersonChip({ person, assigned, onToggle }: PersonChipProps) {
   return (
     <button
       type="button"
-      className={cn("sb-chip")}
+      className="sb-chip"
       style={{ backgroundColor: assigned ? person.color : undefined }}
       aria-pressed={assigned}
       aria-label={`${assigned ? "Remove" : "Add"} ${person.name}`}
