@@ -64,4 +64,4 @@ export type PersonShare = {
   totalIdr?: number;
 };
 
-export type Step = "upload" | "review" | "people" | "assignment" | "results";
+export type Step = "setup" | "assign" | "results";
