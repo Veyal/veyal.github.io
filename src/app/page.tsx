@@ -108,12 +108,33 @@ const INTERSEPTOR = {
   repo: "https://github.com/Veyal/interseptor",
   releases: "https://github.com/Veyal/interseptor/releases",
   docs: "https://veyal.github.io/interseptor/",
-  chips: [
-    { label: "Intercept", bg: "var(--candy-pink)" },
-    { label: "Repeater", bg: "var(--candy-yellow)" },
-    { label: "Intruder", bg: "var(--candy-mint)" },
-    { label: "Scanner", bg: "var(--candy-sky)" },
-    { label: "MCP + API", bg: "var(--candy-grape)" },
+  version: "v2.16.0",
+  /** Concrete capabilities, each one verifiable in the README or docs. */
+  capabilities: [
+    {
+      title: "Intercept & edit",
+      body: "Hold, edit, forward or drop live HTTP/HTTPS — requests and responses — through a local CA, with match-and-replace rules for the boring parts.",
+      tint: "var(--candy-pink)",
+      glyph: "⇄",
+    },
+    {
+      title: "Repeater & Intruder",
+      body: "Resend by hand, or fuzz with Sniper, Battering, Pitchfork, Cluster and race-window attacks. Postman collections import straight into editable tabs.",
+      tint: "var(--candy-yellow)",
+      glyph: "⚡",
+    },
+    {
+      title: "MCP & REST/SSE",
+      body: "An external agent drives the same engine the UI does. Interseptor captures, replays and records evidence; the agent owns the reasoning.",
+      tint: "var(--candy-mint)",
+      glyph: "⌘",
+    },
+  ],
+  stats: [
+    { label: "ships as", value: "1 static binary" },
+    { label: "runtime", value: "pure Go, no JVM" },
+    { label: "license", value: "MIT" },
+    { label: "telemetry", value: "none at all" },
   ],
 };
 
@@ -395,87 +416,111 @@ export default function HomePage() {
         <section id="interseptor" className="scroll-mt-24 py-10">
           <motion.div
             {...springUp}
-            className="card-surface relative grid items-center gap-8 overflow-hidden bg-[var(--candy-sky)]/15 p-6 sm:p-10 lg:grid-cols-[1.1fr_0.9fr]"
+            className="card-surface relative bg-[var(--candy-sky)]/15 p-6 sm:p-10"
           >
             <span className="absolute -right-3 -top-3 rotate-12 rounded-full border-2 border-foreground bg-[var(--candy-yellow)] px-3 py-1 text-xs font-extrabold shadow-[2px_2px_0_var(--ink)]">
               BOSS STAGE
             </span>
-            <div>
-              <p className="mono-label">⭐ featured project</p>
-              <h2
-                className="mt-4 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl"
-                style={{ fontFamily: "'Baloo 2', sans-serif" }}
-              >
-                Interseptor
-              </h2>
-              <p className="mt-3 max-w-xl text-sm font-bold leading-relaxed text-foreground/70 sm:text-base">
-                My intercepting proxy and web-pentest workspace, shipped as one
-                static Go binary. Drive it from a fast web UI, or let your AI
-                agent drive the same engine over MCP. Nothing phones home.
-              </p>
-              <ul className="mt-5 flex flex-wrap gap-2">
-                {INTERSEPTOR.chips.map((c) => (
-                  <li
-                    key={c.label}
-                    className="rounded-full border-2 border-foreground px-3 py-1 text-xs font-extrabold text-foreground shadow-[2px_2px_0_var(--ink)]"
-                    style={{ background: c.bg }}
+
+            {/* headline + terminal */}
+            <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+              <div>
+                <p className="mono-label">⭐ featured project · {INTERSEPTOR.version}</p>
+                <h2
+                  className="mt-4 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl"
+                  style={{ fontFamily: "'Baloo 2', sans-serif" }}
+                >
+                  Interseptor
+                </h2>
+                <p className="mt-3 max-w-xl text-sm font-bold leading-relaxed text-foreground/70 sm:text-base">
+                  An intercepting proxy and security-testing toolkit that ships
+                  as <span className="text-foreground">one static Go binary</span>.
+                  No JVM, no license dongle, no export cap. Point traffic at it,
+                  drive it from the web UI, or hand the same engine to your AI
+                  agent over MCP.
+                </p>
+                <div className="mt-7 flex flex-wrap items-center gap-3">
+                  <a href={INTERSEPTOR.docs} className="btn-primary">
+                    <BookOpen className="h-4 w-4" /> Read the docs
+                  </a>
+                  <a
+                    href={INTERSEPTOR.releases}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost"
                   >
-                    {c.label}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-7 flex flex-wrap items-center gap-3">
-                <a
-                  href={INTERSEPTOR.docs}
-                  className="btn-primary"
-                >
-                  <BookOpen className="h-4 w-4" /> Read the docs
-                </a>
-                <a
-                  href={INTERSEPTOR.releases}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-ghost"
-                >
-                  <Download className="h-4 w-4" /> Releases
-                </a>
-                <a
-                  href={INTERSEPTOR.repo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-ghost"
-                >
-                  <Github className="h-4 w-4" /> Source
-                </a>
+                    <Download className="h-4 w-4" /> Releases
+                  </a>
+                  <a
+                    href={INTERSEPTOR.repo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost"
+                  >
+                    <Github className="h-4 w-4" /> Source
+                  </a>
+                </div>
               </div>
-              <p className="mt-4 text-xs font-bold text-foreground/50">
-                For systems you own or are explicitly authorized to test.
-              </p>
+
+              {/* terminal mock */}
+              <div
+                className="overflow-hidden rounded-2xl border-2 border-foreground bg-[var(--ink)] shadow-[4px_4px_0_var(--ink)]"
+                aria-hidden="true"
+              >
+                <div className="flex items-center gap-1.5 border-b-2 border-foreground bg-secondary px-3 py-2">
+                  <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-pink)]" />
+                  <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-yellow)]" />
+                  <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-mint)]" />
+                  <span className="ml-2 font-mono text-[11px] font-extrabold text-foreground/60">
+                    interseptor
+                  </span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-[12px] leading-relaxed text-white/90">
+<span className="term-line" style={{ "--i": 0 } as React.CSSProperties}>{`$ interseptor`}</span>
+<span className="term-line" style={{ "--i": 1 } as React.CSSProperties}><span className="text-[var(--candy-mint)]">proxy</span>{`  :8080   MITM ready`}</span>
+<span className="term-line" style={{ "--i": 2 } as React.CSSProperties}><span className="text-[var(--candy-sky)]">ui</span>{`     :9966   http://127.0.0.1:9966`}</span>
+<span className="term-line" style={{ "--i": 3 } as React.CSSProperties}><span className="text-[var(--candy-grape)]">mcp</span>{`    :9966/mcp  waiting for agent`}</span>
+<span className="term-line" style={{ "--i": 4 } as React.CSSProperties}>{` `}</span>
+<span className="term-line" style={{ "--i": 5 } as React.CSSProperties}><span className="text-[var(--candy-yellow)]">GET</span>{`    /api/users/42    200   1.2 kB`}</span>
+<span className="term-line" style={{ "--i": 6 } as React.CSSProperties}><span className="text-[var(--candy-pink)]">POST</span>{`   /api/login       held `}<span className="animate-blink text-[var(--candy-pink)]">▮</span></span>
+                </pre>
+              </div>
             </div>
 
-            {/* terminal mock */}
-            <div
-              className="overflow-hidden rounded-2xl border-2 border-foreground bg-[var(--ink)] shadow-[4px_4px_0_var(--ink)]"
-              aria-hidden="true"
-            >
-              <div className="flex items-center gap-1.5 border-b-2 border-foreground bg-secondary px-3 py-2">
-                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-pink)]" />
-                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-yellow)]" />
-                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-mint)]" />
-                <span className="ml-2 text-[11px] font-extrabold text-foreground/60">
-                  interseptor
-                </span>
-              </div>
-              <pre className="overflow-x-auto p-4 font-mono text-[12px] leading-relaxed text-white/90">
-<span className="term-line" style={{ "--i": 0 } as React.CSSProperties}>{`$ interseptor`}</span>
-<span className="term-line" style={{ "--i": 1 } as React.CSSProperties}><span className="text-[var(--candy-mint)]">proxy</span>{`  listening on 127.0.0.1:8080`}</span>
-<span className="term-line" style={{ "--i": 2 } as React.CSSProperties}><span className="text-[var(--candy-sky)]">ui</span>{`     http://127.0.0.1:9966`}</span>
-<span className="term-line" style={{ "--i": 3 } as React.CSSProperties}><span className="text-[var(--candy-grape)]">mcp</span>{`    ready for your agent`}</span>
-<span className="term-line" style={{ "--i": 4 } as React.CSSProperties}>{` `}</span>
-<span className="term-line" style={{ "--i": 5 } as React.CSSProperties}><span className="text-[var(--candy-yellow)]">GET</span>{`  /api/users/42   200`}</span>
-<span className="term-line" style={{ "--i": 6 } as React.CSSProperties}><span className="text-[var(--candy-pink)]">POST</span>{` /api/login      held `}<span className="animate-blink text-[var(--candy-pink)]">▮</span></span>
-              </pre>
+            {/* capability cards */}
+            <div className="mt-9 grid gap-4 sm:grid-cols-3">
+              {INTERSEPTOR.capabilities.map((c) => (
+                <div
+                  key={c.title}
+                  className="rounded-2xl border-2 border-foreground bg-card p-4 shadow-[3px_3px_0_var(--ink)]"
+                  style={{ borderTop: `6px solid ${c.tint}` }}
+                >
+                  <span className="text-xl" aria-hidden="true">
+                    {c.glyph}
+                  </span>
+                  <h3 className="mt-2 text-sm font-extrabold text-foreground">{c.title}</h3>
+                  <p className="mt-1.5 text-xs font-bold leading-relaxed text-foreground/60">
+                    {c.body}
+                  </p>
+                </div>
+              ))}
             </div>
+
+            {/* stats strip */}
+            <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border-2 border-foreground bg-foreground/15 sm:grid-cols-4">
+              {INTERSEPTOR.stats.map((s) => (
+                <div key={s.label} className="bg-card px-4 py-3">
+                  <dt className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-foreground/45">
+                    {s.label}
+                  </dt>
+                  <dd className="mt-0.5 text-sm font-extrabold text-foreground">{s.value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="mt-4 text-xs font-bold text-foreground/50">
+              Built for systems you own or are explicitly authorized to test.
+            </p>
           </motion.div>
         </section>
 
