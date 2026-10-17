@@ -2,8 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, Github, Linkedin, Star } from "lucide-react";
+import { useRef } from "react";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import { ArrowRight, BookOpen, Download, Github, Linkedin, Star } from "lucide-react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import certifications from "@/app/env/certifications.json";
@@ -13,6 +21,28 @@ const fadeUp = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-60px" },
   transition: { duration: 0.5, ease: "easeOut" },
+};
+
+/** Springy variant used for card entrances — tackier than a linear ease. */
+const springUp = {
+  initial: { opacity: 0, y: 22, rotate: -1 },
+  whileInView: { opacity: 1, y: 0, rotate: 0 },
+  viewport: { once: true, margin: "-50px" },
+  transition: { type: "spring" as const, bounce: 0.35, duration: 0.7 },
+};
+
+/** Parent for staggered card grids; children use `staggerItem`. */
+const staggerParent = {
+  initial: {},
+  whileInView: {},
+  viewport: { once: true, margin: "-60px" },
+  transition: { staggerChildren: 0.06 },
+};
+
+const staggerItem = {
+  initial: { opacity: 0, y: 18 },
+  whileInView: { opacity: 1, y: 0 },
+  transition: { type: "spring" as const, bounce: 0.35, duration: 0.6 },
 };
 
 const CANDY = [
@@ -74,17 +104,31 @@ const tools = [
   },
 ];
 
+const INTERSEPTOR = {
+  repo: "https://github.com/Veyal/interseptor",
+  releases: "https://github.com/Veyal/interseptor/releases",
+  docs: "https://veyal.github.io/interseptor/",
+  chips: [
+    { label: "Intercept", bg: "var(--candy-pink)" },
+    { label: "Repeater", bg: "var(--candy-yellow)" },
+    { label: "Intruder", bg: "var(--candy-mint)" },
+    { label: "Scanner", bg: "var(--candy-sky)" },
+    { label: "MCP + API", bg: "var(--candy-grape)" },
+  ],
+};
+
 function Stars({ n }: { n: number }) {
   return (
     <span className="flex gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={`h-4 w-4 ${
+          className={`h-4 w-4 ${i < n ? "star-pop" : ""} ${
             i < n
               ? "fill-[var(--candy-yellow)] text-foreground"
               : "fill-transparent text-foreground/30"
           }`}
+          style={i < n ? ({ "--i": i } as React.CSSProperties) : undefined}
         />
       ))}
     </span>
@@ -95,6 +139,80 @@ function certStatus(cert: { expires?: string; expired?: string }) {
   if (cert.expired) return { label: "retired badge", bg: "var(--candy-grape)" };
   if (cert.expires) return { label: `until ${cert.expires}`, bg: "var(--candy-mint)" };
   return { label: "forever mine", bg: "var(--candy-yellow)" };
+}
+
+/**
+ * Sticker card that tilts slightly toward the pointer.
+ * Pointer position is normalised to -0.5..0.5 and mapped to a capped rotation,
+ * so the effect reads as a scrapbook card being nudged, not a 3D showcase.
+ */
+function TiltCard({
+  children,
+  className = "",
+  style,
+  maxTilt = 4,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  maxTilt?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+
+  // Normalised pointer position, 0.5 = centre.
+  const px = useMotionValue(0.5);
+  const py = useMotionValue(0.5);
+
+  const spring = { stiffness: 260, damping: 26, mass: 0.4 };
+  const rotateX = useSpring(useTransform(py, [0, 1], [maxTilt, -maxTilt]), spring);
+  const rotateY = useSpring(useTransform(px, [0, 1], [-maxTilt, maxTilt]), spring);
+
+  // Soft spotlight that follows the cursor; subtle enough to stay optional.
+  const glareX = useTransform(px, (v) => `${v * 100}%`);
+  const glareY = useTransform(py, (v) => `${v * 100}%`);
+  const glare = useMotionTemplate`radial-gradient(220px circle at ${glareX} ${glareY}, rgba(255,255,255,0.55), transparent 70%)`;
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (reduceMotion || e.pointerType === "touch") return;
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    px.set((e.clientX - rect.left) / rect.width);
+    py.set((e.clientY - rect.top) / rect.height);
+  }
+
+  function onPointerLeave() {
+    px.set(0.5);
+    py.set(0.5);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
+      style={
+        reduceMotion
+          ? style
+          : {
+              ...style,
+              rotateX,
+              rotateY,
+              transformPerspective: 900,
+            }
+      }
+      className={`group relative ${className}`}
+    >
+      {children}
+      {!reduceMotion && (
+        <motion.span
+          aria-hidden="true"
+          style={{ background: glare }}
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        />
+      )}
+    </motion.div>
+  );
 }
 
 export default function HomePage() {
@@ -111,7 +229,7 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
           >
             <p className="mono-label">
-              <span className="animate-scan inline-block">👋</span> hello there!
+              <span className="animate-wiggle inline-block origin-bottom-right">👋</span> hello there!
             </p>
             <h1
               className="mt-5 text-5xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-7xl"
@@ -192,9 +310,11 @@ export default function HomePage() {
             id="about"
             className="scroll-mt-24"
           >
-            <div className="card-surface card-hover relative p-6 sm:p-7">
-              {/* corner sticker */}
-              <div className="absolute -right-3 -top-3 rotate-12 rounded-full border-2 border-foreground bg-[var(--candy-yellow)] px-3 py-1 text-xs font-extrabold shadow-[2px_2px_0_var(--ink)]">
+            <TiltCard maxTilt={3}>
+            <div className="card-surface card-hover group relative p-6 sm:p-7">
+              {/* corner sticker — wiggles only on card hover, so it never
+                  becomes constant peripheral motion */}
+              <div className="absolute -right-3 -top-3 rotate-12 rounded-full border-2 border-foreground bg-[var(--candy-yellow)] px-3 py-1 text-xs font-extrabold shadow-[2px_2px_0_var(--ink)] group-hover:animate-wiggle">
                 LV. 99 SNACKER
               </div>
 
@@ -267,6 +387,95 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+            </TiltCard>
+          </motion.div>
+        </section>
+
+        {/* ============ FEATURED: INTERSEPTOR ============ */}
+        <section id="interseptor" className="scroll-mt-24 py-10">
+          <motion.div
+            {...springUp}
+            className="card-surface relative grid items-center gap-8 overflow-hidden bg-[var(--candy-sky)]/15 p-6 sm:p-10 lg:grid-cols-[1.1fr_0.9fr]"
+          >
+            <span className="absolute -right-3 -top-3 rotate-12 rounded-full border-2 border-foreground bg-[var(--candy-yellow)] px-3 py-1 text-xs font-extrabold shadow-[2px_2px_0_var(--ink)]">
+              BOSS STAGE
+            </span>
+            <div>
+              <p className="mono-label">⭐ featured project</p>
+              <h2
+                className="mt-4 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl"
+                style={{ fontFamily: "'Baloo 2', sans-serif" }}
+              >
+                Interseptor
+              </h2>
+              <p className="mt-3 max-w-xl text-sm font-bold leading-relaxed text-foreground/70 sm:text-base">
+                My intercepting proxy and web-pentest workspace, shipped as one
+                static Go binary. Drive it from a fast web UI, or let your AI
+                agent drive the same engine over MCP. Nothing phones home.
+              </p>
+              <ul className="mt-5 flex flex-wrap gap-2">
+                {INTERSEPTOR.chips.map((c) => (
+                  <li
+                    key={c.label}
+                    className="rounded-full border-2 border-foreground px-3 py-1 text-xs font-extrabold text-foreground shadow-[2px_2px_0_var(--ink)]"
+                    style={{ background: c.bg }}
+                  >
+                    {c.label}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <a
+                  href={INTERSEPTOR.docs}
+                  className="btn-primary"
+                >
+                  <BookOpen className="h-4 w-4" /> Read the docs
+                </a>
+                <a
+                  href={INTERSEPTOR.releases}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost"
+                >
+                  <Download className="h-4 w-4" /> Releases
+                </a>
+                <a
+                  href={INTERSEPTOR.repo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost"
+                >
+                  <Github className="h-4 w-4" /> Source
+                </a>
+              </div>
+              <p className="mt-4 text-xs font-bold text-foreground/50">
+                For systems you own or are explicitly authorized to test.
+              </p>
+            </div>
+
+            {/* terminal mock */}
+            <div
+              className="overflow-hidden rounded-2xl border-2 border-foreground bg-[var(--ink)] shadow-[4px_4px_0_var(--ink)]"
+              aria-hidden="true"
+            >
+              <div className="flex items-center gap-1.5 border-b-2 border-foreground bg-secondary px-3 py-2">
+                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-pink)]" />
+                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-yellow)]" />
+                <span className="h-3 w-3 rounded-full border-2 border-foreground bg-[var(--candy-mint)]" />
+                <span className="ml-2 text-[11px] font-extrabold text-foreground/60">
+                  interseptor
+                </span>
+              </div>
+              <pre className="overflow-x-auto p-4 font-mono text-[12px] leading-relaxed text-white/90">
+<span className="term-line" style={{ "--i": 0 } as React.CSSProperties}>{`$ interseptor`}</span>
+<span className="term-line" style={{ "--i": 1 } as React.CSSProperties}><span className="text-[var(--candy-mint)]">proxy</span>{`  listening on 127.0.0.1:8080`}</span>
+<span className="term-line" style={{ "--i": 2 } as React.CSSProperties}><span className="text-[var(--candy-sky)]">ui</span>{`     http://127.0.0.1:9966`}</span>
+<span className="term-line" style={{ "--i": 3 } as React.CSSProperties}><span className="text-[var(--candy-grape)]">mcp</span>{`    ready for your agent`}</span>
+<span className="term-line" style={{ "--i": 4 } as React.CSSProperties}>{` `}</span>
+<span className="term-line" style={{ "--i": 5 } as React.CSSProperties}><span className="text-[var(--candy-yellow)]">GET</span>{`  /api/users/42   200`}</span>
+<span className="term-line" style={{ "--i": 6 } as React.CSSProperties}><span className="text-[var(--candy-pink)]">POST</span>{` /api/login      held `}<span className="animate-blink text-[var(--candy-pink)]">▮</span></span>
+              </pre>
+            </div>
           </motion.div>
         </section>
 
@@ -285,14 +494,16 @@ export default function HomePage() {
               proctor watched me sweat. Collected like Pokémon badges.
             </p>
           </motion.div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            {...staggerParent}
+            className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {certifications.map((cert, i) => {
               const status = certStatus(cert);
               return (
                 <motion.div
                   key={cert.abbreviation}
-                  {...fadeUp}
-                  transition={{ ...fadeUp.transition, delay: i * 0.05 }}
+                  {...staggerItem}
                   className="card-surface card-hover relative p-5"
                   style={{ rotate: `${(i % 3) - 1}deg` }}
                 >
@@ -329,7 +540,7 @@ export default function HomePage() {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </section>
 
         {/* ============ PLAYGROUND (TOOLS) ============ */}
@@ -347,13 +558,12 @@ export default function HomePage() {
               happens right in your browser.
             </p>
           </motion.div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            {...staggerParent}
+            className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {tools.map((tool, i) => (
-              <motion.div
-                key={tool.name}
-                {...fadeUp}
-                transition={{ ...fadeUp.transition, delay: i * 0.05 }}
-              >
+              <motion.div key={tool.name} {...staggerItem}>
                 <Link
                   href={tool.path}
                   className="card-surface card-hover group flex h-full flex-col p-6"
@@ -388,8 +598,7 @@ export default function HomePage() {
 
             {/* "more soon" tile */}
             <motion.div
-              {...fadeUp}
-              transition={{ ...fadeUp.transition, delay: tools.length * 0.05 }}
+              {...staggerItem}
               className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-foreground/40 p-6 text-center"
             >
               <span className="text-3xl">🚧</span>
@@ -400,13 +609,13 @@ export default function HomePage() {
                 (as soon as I stop playing with the other ones)
               </p>
             </motion.div>
-          </div>
+          </motion.div>
         </section>
 
         {/* ============ CONTACT ============ */}
         <section id="contact" className="scroll-mt-24 py-14 pb-24">
           <motion.div
-            {...fadeUp}
+            {...springUp}
             className="card-surface relative overflow-hidden bg-[#ff6fa5]/15 p-8 text-center sm:p-14"
           >
             <span className="absolute left-6 top-6 rotate-[-8deg] text-2xl">💌</span>
