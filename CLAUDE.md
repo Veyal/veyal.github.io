@@ -21,15 +21,21 @@ There is no test runner configured.
 
 ### Tools registry pattern
 `src/app/env/tools.json` is the single source of truth for the tool list. It is consumed by:
-- `src/components/StageSelect.tsx` — landing-page "Select Stage" grid
-- `src/app/tools/layout.tsx` — shared tools nav (pills + overflow dropdown; mobile shows 2 inline, desktop 3)
+- `src/app/page.tsx` — the "Small tools that run in your browser" grid on the home page
+- `src/app/tools/layout.tsx` — the tool switcher bar under the site nav (scrolls sideways on narrow screens)
 
-Adding a new tool requires three steps: add a route under `src/app/tools/<slug>/page.tsx`, append an entry to `tools.json` (`name`, `path` with trailing slash, `icon` matching the `iconMap` in `StageSelect.tsx`, `status: "ready" | "in-development" | "locked"`), and ensure the icon key exists in `StageSelect.tsx`'s `iconMap` (currently `LockIcon`, `KeyIcon`, `CodeIcon` from `lucide-react`). The tools layout also hard-codes emoji per tool name substring (`Encryptor`, `Password`, `JSON`, `AES`) — update there too if the new name doesn't match.
+Adding a new tool requires three steps: add a route under `src/app/tools/<slug>/page.tsx`, append an entry to `tools.json` (`name`, `path` with trailing slash, `icon`, `status: "ready" | "in-development" | "locked"`, and a one-line `blurb`), and make sure the `icon` key exists in the `ICONS` map in `src/components/site/ToolIcon.tsx` (lucide icons; unknown keys fall back to a wrench).
 
-Certifications shown on the home page are similarly driven by `src/app/env/certifications.json`.
+Certifications shown on the home page are similarly driven by `src/app/env/certifications.json`. Their "valid until / expired" status is computed on the client after mount, so the static HTML never depends on the build date.
+
+### Pond design system
+The site's look is the "Pond" system defined in `src/app/globals.css`: day sections (and every tool page) on Shallows `#EAF3EE` with Pond Ink `#12302A`, and the home hero plus the Interseptor showcase on Night Pond `#0D2621`. One variable font, Recursive (`next/font/google`, axes `CASL` and `MONO`), covers display (`.type-display`), body and code. The `--candy-*` and `--ink` variables and the `card-surface`, `field-input`, `chip` and `mono-label` classes are kept because tool pages use them.
 
 ### App Router layout
-`src/app/layout.tsx` is the root layout and renders the Kirby-themed animated background (floating stars, bubbles, clouds, platforms) for *every* page via fixed-position decorative elements — Tailwind classes referenced live in `src/app/kirby-background.css` and `src/app/globals.css`. `src/app/tools/layout.tsx` wraps all `/tools/*` pages with the Power-Up Station header and its own background; do not duplicate the global background inside tool pages.
+`src/app/layout.tsx` is the root layout: it loads the font and metadata only, with no decorative background. `src/components/site/Nav.tsx` and `Footer.tsx` are shared by the home page and `src/app/tools/layout.tsx`.
+
+### Home page and Interseptor
+`src/app/page.tsx` composes `PondHero` (interactive scene: flies carrying fake requests, the live SVG `Frog`, and an intercept tray) and `InterseptorShowcase` (real demo video, feature tabs with real screenshots, install and agent snippets) from `src/components/pond/`. Interseptor facts and the tamper-demo requests live in `src/lib/interseptor.ts`; keep facts in sync with the Interseptor README. Product media under `public/pond/` (not `public/interseptor/`, which would collide with the Interseptor docs site path) is copied from `~/Documents/interseptor/website/assets/`. Content must stay visible in the static HTML: do not use opacity-0 entrance animations.
 
 ### UI component conventions
 shadcn/ui is configured (`components.json`, style `new-york`, base `neutral`, CSS variables). Primitives live in `src/components/ui/`. Path alias `@/*` → `src/*` (see `tsconfig.json`). Use `cn()` from `src/lib/utils.ts` (`clsx` + `tailwind-merge`) for class merging.

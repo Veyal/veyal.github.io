@@ -1,7 +1,37 @@
 [
-    { "name": "Encryptor", "path": "/tools/encryptor/", "icon": "LockIcon", "status": "ready" },
-    { "name": "Password Generator", "path": "/tools/password-generator/", "icon": "KeyIcon", "status": "ready" },
-    { "name": "JSON Beautifier", "path": "/tools/json-beautifier/", "icon": "CodeIcon", "status": "ready" },
-    { "name": "AES Mode Detector", "path": "/tools/aes-mode-detector/", "icon": "LockIcon", "status": "ready" },
-    { "name": "Bill Splitter", "path": "/tools/splitbill/", "icon": "CodeIcon", "status": "ready" }
-  ]
+  {
+    "name": "Encryptor",
+    "path": "/tools/encryptor/",
+    "icon": "Lock",
+    "status": "ready",
+    "blurb": "Scramble your secrets with AES, and unscramble them too. That part matters."
+  },
+  {
+    "name": "Password Generator",
+    "path": "/tools/password-generator/",
+    "icon": "Dices",
+    "status": "ready",
+    "blurb": "Passwords so random even I can't guess them, and guessing passwords is my job."
+  },
+  {
+    "name": "JSON Beautifier",
+    "path": "/tools/json-beautifier/",
+    "icon": "Braces",
+    "status": "ready",
+    "blurb": "Turns JSON spaghetti into JSON lasagna. Neat, layered, easy to read."
+  },
+  {
+    "name": "AES Mode Detector",
+    "path": "/tools/aes-mode-detector/",
+    "icon": "ScanSearch",
+    "status": "ready",
+    "blurb": "Detective work for ciphertext. Is it ECB or CBC? Paste it in and find out."
+  },
+  {
+    "name": "Bill Splitter",
+    "path": "/tools/splitbill/",
+    "icon": "Receipt",
+    "status": "ready",
+    "blurb": "Snap a receipt, let AI read it, and split it fairly. Friendships saved."
+  }
+]
