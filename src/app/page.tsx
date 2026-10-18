@@ -7,8 +7,8 @@ import { Github, Linkedin } from "lucide-react";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { ToolIcon } from "@/components/site/ToolIcon";
-import { PondHero } from "@/components/pond/PondHero";
-import { InterseptorShowcase } from "@/components/pond/InterseptorShowcase";
+import { DreamHero } from "@/components/dreamland/DreamHero";
+import { InterseptorShowcase } from "@/components/dreamland/InterseptorShowcase";
 import { INTERSEPTOR } from "@/lib/interseptor";
 import certifications from "@/app/env/certifications.json";
 import tools from "@/app/env/tools.json";
@@ -48,7 +48,7 @@ export default function HomePage() {
       <Nav />
 
       <main>
-        <PondHero />
+        <DreamHero />
         <InterseptorShowcase />
 
         {/* About */}
@@ -58,16 +58,12 @@ export default function HomePage() {
               <div className="flex items-center gap-4">
                 <Image
                   src="/profile.png"
-                  alt="Andrew's avatar"
+                  alt=""
                   width={72}
                   height={72}
-                  className="h-[72px] w-[72px] rounded-[1.25rem] bg-[#cdeee1] ring-2 ring-[var(--lily)] ring-offset-4 ring-offset-[hsl(var(--background))]"
+                  className="h-[72px] w-[72px] rounded-[1.25rem] bg-[var(--blush)] ring-2 ring-[var(--pink)] ring-offset-4 ring-offset-[hsl(var(--background))]"
                 />
-                <p className="text-[0.95rem] text-muted-foreground">
-                  Andrew Salim
-                  <br />
-                  <span className="font-semibold text-foreground">@Veyal</span>
-                </p>
+                <p className="font-semibold">@Veyal</p>
               </div>
               <h2 className="type-display mt-8 text-[clamp(2.25rem,5vw,3.5rem)]">Hi, I&apos;m Andrew.</h2>
               <div className="mt-6 max-w-[36rem] space-y-4 text-lg leading-relaxed text-muted-foreground">
@@ -115,14 +111,14 @@ export default function HomePage() {
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {cert.organization}, issued {cert.issued}
-                          <span className={`block font-semibold sm:hidden ${status.active ? "text-[#145a45]" : ""}`}>
+                          <span className={`block font-semibold sm:hidden ${status.active ? "text-[#7a1f4c]" : ""}`}>
                             {status.text}
                           </span>
                         </p>
                       </div>
                       <span
                         className={`hidden shrink-0 rounded-full px-3 py-1 text-sm font-semibold sm:inline ${
-                          status.active ? "bg-[#d3f3e7] text-[#145a45]" : "bg-secondary text-muted-foreground"
+                          status.active ? "bg-[var(--blush)] text-[#7a1f4c]" : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {status.text}
@@ -136,7 +132,7 @@ export default function HomePage() {
         </section>
 
         {/* Tools */}
-        <section id="tools" className="scroll-mt-16 border-t border-[var(--pad-edge)] bg-[#e1eee7]">
+        <section id="tools" className="scroll-mt-16 bg-[var(--blush)]">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
             <h2 className="type-display max-w-2xl text-[clamp(2.25rem,5vw,3.5rem)]">
               Small tools that run in your browser.
@@ -151,7 +147,7 @@ export default function HomePage() {
                   className={readyTools.length % 2 === 1 && i === readyTools.length - 1 ? "md:col-span-2" : undefined}
                 >
                   <Link href={tool.path} className="card-surface card-hover flex h-full items-start gap-4 p-5 sm:p-6">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#d3f3e7] text-[#145a45]">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--blush)] text-[var(--cheek)]">
                       <ToolIcon name={tool.icon} className="h-6 w-6" />
                     </span>
                     <span className="min-w-0">

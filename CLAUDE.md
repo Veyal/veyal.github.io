@@ -28,14 +28,16 @@ Adding a new tool requires three steps: add a route under `src/app/tools/<slug>/
 
 Certifications shown on the home page are similarly driven by `src/app/env/certifications.json`. Their "valid until / expired" status is computed on the client after mount, so the static HTML never depends on the build date.
 
-### Pond design system
-The site's look is the "Pond" system defined in `src/app/globals.css`: day sections (and every tool page) on Shallows `#EAF3EE` with Pond Ink `#12302A`, and the home hero plus the Interseptor showcase on Night Pond `#0D2621`. One variable font, Recursive (`next/font/google`, axes `CASL` and `MONO`), covers display (`.type-display`), body and code. The `--candy-*` and `--ink` variables and the `card-surface`, `field-input`, `chip` and `mono-label` classes are kept because tool pages use them.
+### Dream Land design system
+The site's look is "Dream Land, grown up" (Kirby), defined in `src/app/globals.css`: reading sections and every tool page on Cloud `#FFF8FB` with Plum Ink `#2A2140` text, the home hero on Sky `#A8DCFF` with a meadow, and the Interseptor showcase, code blocks and footer on Dream Night `#221A3A`. Kirby Pink `#FF9EC4` is the primary fill (text on it is Plum Ink); Warp Yellow `#FFD44D` is for stars and the focus ring on night. Display type is Fredoka (`.type-display`, `--font-fredoka`); body and code are Recursive (`--font-rec`, MONO axis for code). Surfaces are puffy (rounded, no hard offset shadows) and buttons squish on press. The `--candy-*` and `--ink` variables and the `card-surface`, `field-input`, `chip` and `mono-label` classes are kept because tool pages use them. Do not push the owner's name in hero/marketing copy; he only appears in the About section.
+
+Kirby art lives in `public/kirby/` (transparent WebP stickers generated with agy on a green screen and chroma-keyed): idle, inhale, full, spit, sleep, warpstar, detective, book, laptop.
 
 ### App Router layout
 `src/app/layout.tsx` is the root layout: it loads the font and metadata only, with no decorative background. `src/components/site/Nav.tsx` and `Footer.tsx` are shared by the home page and `src/app/tools/layout.tsx`.
 
 ### Home page and Interseptor
-`src/app/page.tsx` composes `PondHero` (interactive scene: flies carrying fake requests, the live SVG `Frog`, and an intercept tray) and `InterseptorShowcase` (real demo video, feature tabs with real screenshots, install and agent snippets) from `src/components/pond/`. Interseptor facts and the tamper-demo requests live in `src/lib/interseptor.ts`; keep facts in sync with the Interseptor README. Product media under `public/pond/` (not `public/interseptor/`, which would collide with the Interseptor docs site path) is copied from `~/Documents/interseptor/website/assets/`. Content must stay visible in the static HTML: do not use opacity-0 entrance animations.
+`src/app/page.tsx` composes `DreamHero` (floating requests that Kirby inhales; a held request stays in his cheeks until the visitor forwards it, when he spits it out as a star, or drops it, when he swallows it) and `InterseptorShowcase` (real demo video, feature tabs with real screenshots, install and agent snippets) from `src/components/dreamland/`. Interseptor facts and the tamper-demo requests live in `src/lib/interseptor.ts`; keep facts in sync with the Interseptor README. Product media under `public/product/` (not `public/interseptor/`, which would collide with the Interseptor docs site path) is copied from `~/Documents/interseptor/website/assets/`. Content must stay visible in the static HTML: do not use opacity-0 entrance animations.
 
 ### UI component conventions
 shadcn/ui is configured (`components.json`, style `new-york`, base `neutral`, CSS variables). Primitives live in `src/components/ui/`. Path alias `@/*` → `src/*` (see `tsconfig.json`). Use `cn()` from `src/lib/utils.ts` (`clsx` + `tailwind-merge`) for class merging.

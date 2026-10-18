@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Recursive } from "next/font/google";
+import { Fredoka, Recursive } from "next/font/google";
 import "./globals.css";
 
 /*
- * One variable family for the whole site. The CASL axis turns it casual for
- * headlines, and the MONO axis turns it into the code face for HTTP labels.
+ * Fredoka is the round display face (Kirby-logo friendly). Recursive covers
+ * body text, and its MONO axis turns it into the code face for HTTP labels.
  */
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  variable: "--font-fredoka",
+  display: "swap",
+});
+
 const recursive = Recursive({
   subsets: ["latin"],
   axes: ["CASL", "MONO"],
@@ -14,12 +20,12 @@ const recursive = Recursive({
 });
 
 export const metadata: Metadata = {
-  title: "Andrew Salim (@Veyal): penetration tester, maker of Interseptor",
+  title: "veyal: Interseptor and small security tools",
   description:
-    "Interseptor is an intercepting proxy and pentest workbench in one Go binary, built by Andrew Salim (@Veyal), an OSCP and OSWE certified penetration tester. Plus small browser tools.",
+    "Interseptor is an intercepting proxy and pentest workbench in one Go binary. Plus the portfolio and small browser tools of a penetration tester who goes by Veyal.",
   metadataBase: new URL("https://veyal.github.io"),
   openGraph: {
-    title: "Interseptor, by Andrew Salim (@Veyal)",
+    title: "Interseptor: catch every request before it lands",
     description:
       "Catch every request before it lands. An intercepting proxy and pentest workbench in one Go binary.",
     url: "https://veyal.github.io",
@@ -32,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d2621",
+  themeColor: "#fff8fb",
 };
 
 export default function RootLayout({
@@ -41,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={recursive.variable}>
+    <html lang="en" className={`${recursive.variable} ${fredoka.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -3,56 +3,62 @@
 @tailwind utilities;
 
 /*
- * Pond design system.
- * Day sections (and every tool page) sit on Shallows; the home hero and the
- * Interseptor showcase sit on Night Pond. Candy names are kept because the
- * tool pages reference them, but they now come from the Interseptor frog.
+ * Dream Land design system (Kirby, grown up).
+ * Reading surfaces sit on Cloud, the home hero on Sky, and the Interseptor
+ * showcase, code and footer on Dream Night. Candy names are kept because the
+ * tool pages reference them. Full spec: CLAUDE.md, "Dream Land design system".
  */
 @layer base {
   :root {
     /* Day palette, consumed by Tailwind + shadcn primitives */
-    --background: 147 29% 93%;      /* Shallows   #EAF3EE */
-    --foreground: 168 45% 13%;      /* Pond Ink   #12302A */
+    --background: 334 100% 99%;     /* Cloud       #FFF8FB */
+    --foreground: 257 32% 19%;      /* Plum Ink    #2A2140 */
     --card: 0 0% 100%;
-    --card-foreground: 168 45% 13%;
+    --card-foreground: 257 32% 19%;
     --popover: 0 0% 100%;
-    --popover-foreground: 168 45% 13%;
-    --primary: 161 61% 56%;         /* Lily       #4CD4A9 */
-    --primary-foreground: 168 45% 13%;
-    --secondary: 149 27% 88%;
-    --secondary-foreground: 168 45% 13%;
-    --muted: 148 25% 89%;
-    --muted-foreground: 161 18% 32%;
-    --accent: 42 100% 65%;          /* Firefly    #FFC94D */
-    --accent-foreground: 168 45% 13%;
+    --popover-foreground: 257 32% 19%;
+    --primary: 336 100% 81%;        /* Kirby Pink  #FF9EC4 */
+    --primary-foreground: 257 32% 19%;
+    --secondary: 336 100% 95%;      /* Blush       #FFE6F0 */
+    --secondary-foreground: 257 32% 19%;
+    --muted: 334 70% 96%;
+    --muted-foreground: 259 16% 39%; /* Dusk       #5E5474, 6.7:1 on Cloud */
+    --accent: 45 100% 65%;          /* Warp Yellow #FFD44D */
+    --accent-foreground: 257 32% 19%;
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 151 20% 79%;
-    --input: 151 20% 72%;
-    --ring: 161 61% 40%;
+    --border: 327 30% 89%;
+    --input: 327 25% 78%;
+    --ring: 257 32% 19%;
     --radius: 1rem;
 
-    /* Night palette, used by the hero and the Interseptor showcase */
-    --night: #0d2621;               /* Night Pond */
-    --night-2: #133630;             /* Deep Water */
-    --night-3: #1c4840;             /* Lily shadow */
-    --mist: #e3f2ea;                /* text on night */
-    --reed: #93b8aa;                /* secondary text on night, 7.4:1 */
-    --lily: #4cd4a9;
-    --lily-deep: #2fa883;
-    --firefly: #ffc94d;
-    --dragonfly: #a78bfa;
-    --blush: #ff8fb1;
+    /* Dream Night: the Interseptor showcase, code blocks and the footer */
+    --night: #221a3a;
+    --night-2: #2e2550;             /* Night Raised */
+    --night-3: #3a3066;
+    --moon: #f4f0ff;                /* text on night */
+    --lilac: #c9c0e0;               /* secondary text on night, 9.5:1 */
+
+    /* Dream Land colours */
+    --pink: #ff9ec4;                /* Kirby Pink: fills, text on it is Plum Ink */
+    --pink-deep: #e77aa6;
+    --cheek: #d93a7a;               /* small accents and underlines */
+    --star: #ffd44d;                /* Warp Yellow */
+    --sky: #a8dcff;
+    --sky-deep: #8ccbf5;
+    --meadow: #8fd694;
+    --meadow-deep: #6cc27a;
+    --blush: #ffe6f0;
 
     /* Kept for the tool pages */
-    --candy-pink: #ff6fa5;
-    --candy-yellow: #ffc94d;
-    --candy-mint: #4cd4a9;
-    --candy-sky: #5ab8ff;
-    --candy-grape: #a78bfa;
-    --ink: #12302a;
+    --candy-pink: #ff9ec4;
+    --candy-yellow: #ffd44d;
+    --candy-mint: #8fd694;
+    --candy-sky: #a8dcff;
+    --candy-grape: #c9b6ff;
+    --ink: #2a2140;
 
-    --pad-edge: rgba(18, 48, 42, 0.14);
+    --pad-edge: rgba(42, 33, 64, 0.12);
   }
 }
 
@@ -76,9 +82,9 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: var(--font-rec), system-ui, sans-serif;
-    font-variation-settings: "CASL" 0.6;
-    letter-spacing: -0.02em;
+    font-family: var(--font-fredoka), var(--font-rec), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.08;
     text-wrap: balance;
   }
@@ -88,18 +94,18 @@
   }
 
   ::selection {
-    background: var(--firefly);
+    background: var(--star);
     color: var(--ink);
   }
 
-  /* Ink ring on day surfaces, firefly ring on night ones: 3:1 or better on each. */
+  /* Plum Ink ring on light surfaces, Warp Yellow ring on night ones: 3:1 or better on each. */
   :focus-visible {
     outline: 3px solid var(--ink);
     outline-offset: 3px;
     border-radius: 6px;
   }
   .night :focus-visible {
-    outline-color: var(--firefly);
+    outline-color: var(--star);
   }
 
   code, kbd, samp, pre, .font-mono {
@@ -109,15 +115,15 @@
 }
 
 @layer components {
-  /* Display type: Recursive at full casual, used for headlines that should talk. */
+  /* Display type: Fredoka, round like the Kirby logo. */
   .type-display {
-    font-variation-settings: "CASL" 1;
-    font-weight: 850;
-    letter-spacing: -0.035em;
-    line-height: 0.98;
+    font-family: var(--font-fredoka), var(--font-rec), system-ui, sans-serif;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    line-height: 1.02;
   }
 
-  /* Mono with a little warmth: HTTP labels inside the pond scene. */
+  /* Mono with a little warmth: HTTP labels on the floating requests. */
   .type-mono-casual {
     font-family: var(--font-rec), ui-monospace, monospace;
     font-variation-settings: "MONO" 1, "CASL" 1;
@@ -128,11 +134,10 @@
     @apply inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-foreground;
   }
 
-  /* Lily pad: white surface with a heavier lower edge, as if resting on water. */
+  /* Puffy card: soft white panel, no outline-and-shadow sticker treatment. */
   .card-surface {
-    @apply rounded-[1.25rem] bg-card;
+    @apply rounded-2xl bg-card;
     border: 1.5px solid var(--pad-edge);
-    border-bottom-width: 4px;
   }
 
   .card-hover {
@@ -140,53 +145,57 @@
   }
   .card-hover:hover {
     transform: translateY(-2px);
-    border-color: rgba(18, 48, 42, 0.28);
+    border-color: rgba(42, 33, 64, 0.28);
+  }
+  .card-hover:active {
+    transform: scale(0.985);
   }
 
+  /* Buttons squish when pressed, like Kirby landing. */
   .btn-primary {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-[0.95rem] font-bold;
-    background: var(--lily);
+    background: var(--pink);
     color: var(--ink);
-    box-shadow: inset 0 -3px 0 var(--lily-deep);
-    transition: transform 0.15s ease, background-color 0.15s ease;
+    transition: transform 0.12s ease, background-color 0.15s ease;
   }
   .btn-primary:hover {
-    background: #62dcb5;
+    background: #ffb3d2;
   }
-  .btn-primary:active {
-    transform: translateY(2px);
-    box-shadow: inset 0 -1px 0 var(--lily-deep);
+  .btn-primary:active,
+  .btn-ghost:active,
+  .btn-night:active {
+    transform: scale(0.96);
   }
 
   .btn-ghost {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-[0.95rem] font-bold text-foreground;
-    border: 1.5px solid rgba(18, 48, 42, 0.25);
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    border: 1.5px solid rgba(42, 33, 64, 0.25);
+    transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
   }
   .btn-ghost:hover {
     border-color: var(--ink);
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.7);
   }
 
   /* Ghost button on night surfaces */
   .btn-night {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-[0.95rem] font-bold;
-    color: var(--mist);
-    border: 1.5px solid rgba(227, 242, 234, 0.3);
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    color: var(--moon);
+    border: 1.5px solid rgba(244, 240, 255, 0.3);
+    transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
   }
   .btn-night:hover {
-    border-color: var(--mist);
-    background: rgba(227, 242, 234, 0.08);
+    border-color: var(--moon);
+    background: rgba(244, 240, 255, 0.08);
   }
 
   .field-input {
     @apply w-full rounded-xl bg-card px-3.5 py-2.5 text-base text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none;
-    border: 1.5px solid rgba(18, 48, 42, 0.2);
+    border: 1.5px solid rgba(42, 33, 64, 0.2);
   }
   .field-input:focus {
-    border-color: var(--lily-deep);
-    box-shadow: 0 0 0 3px rgba(76, 212, 169, 0.35);
+    border-color: var(--cheek);
+    box-shadow: 0 0 0 3px rgba(255, 158, 196, 0.45);
   }
 
   .chip {
@@ -196,7 +205,7 @@
 
   .night {
     background: var(--night);
-    color: var(--mist);
+    color: var(--moon);
   }
 }
 
@@ -209,41 +218,29 @@
     animation: blink 1.1s step-end infinite;
   }
 
-  /* Fly wings: a quick flutter, scaleY only. */
-  @keyframes flutter {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(0.35); }
+  /* Request stars bob gently while they float. */
+  @keyframes twinkle {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(0.82) rotate(18deg); }
   }
-  .animate-flutter {
-    animation: flutter 0.12s linear infinite;
-    transform-box: fill-box;
-    transform-origin: 50% 100%;
-  }
-
-  /* Frog blink: eyelids close for a beat every few seconds. */
-  @keyframes frog-blink {
-    0%, 94%, 100% { transform: scaleY(0); }
-    96%, 98% { transform: scaleY(1); }
-  }
-  .animate-frog-blink {
-    animation: frog-blink 5.5s ease-in-out infinite;
-    transform-box: fill-box;
-    transform-origin: 50% 0%;
-  }
-
-  /* Ripple ring on the water when the frog lands a catch. */
-  @keyframes ripple {
-    from { transform: scale(0.4); opacity: 0.7; }
-    to { transform: scale(1.6); opacity: 0; }
-  }
-  .animate-ripple {
-    animation: ripple 1.1s ease-out forwards;
+  .animate-twinkle {
+    animation: twinkle 1.6s ease-in-out infinite;
     transform-box: fill-box;
     transform-origin: center;
   }
+
+  /* Inhale wind: dashes stream toward Kirby's mouth. */
+  @keyframes suck {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 48; }
+  }
+  .animate-suck {
+    stroke-dasharray: 14 10;
+    animation: suck 0.35s linear infinite;
+  }
 }
 
-/* Global reduced-motion guard. Framer Motion and the pond loop are gated in JS. */
+/* Global reduced-motion guard. Framer Motion and the hero loop are gated in JS. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

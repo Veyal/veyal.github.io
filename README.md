@@ -1,11 +1,11 @@
 # veyal.github.io
 
-Personal site of **Andrew Salim** ([@Veyal](https://github.com/Veyal)), penetration tester and maker of
-[Interseptor](https://github.com/Veyal/interseptor).
+Portfolio of [@Veyal](https://github.com/Veyal), penetration tester and maker of
+[Interseptor](https://github.com/Veyal/interseptor), in a Kirby "Dream Land" style.
 
-The home page leads with Interseptor: a night-pond hero where the Interseptor frog catches flying
-HTTP requests, and visitors can edit, forward or drop the caught request against a pretend server
-running in the browser. Below it are the real product tour, screenshots, certifications and a set
+The home page leads with Interseptor: Kirby inhales floating HTTP requests, and visitors can edit
+the caught request, then forward it (Kirby spits it out as a star) or drop it (he swallows it),
+against a pretend server running in the browser. Below it are the real product tour, screenshots, certifications and a set
 of free client-side tools:
 
 - **Encryptor**: encrypt and decrypt text in the browser
@@ -14,12 +14,12 @@ of free client-side tools:
 - **AES Mode Detector**: spot ECB vs CBC from ciphertext patterns
 - **Bill Splitter**: AI receipt reading and fair bill splitting
 
-[`public/media/pond-teaser.mp4`](public/media/pond-teaser.mp4) is a 10-second recording of the hero.
+[`public/media/kirby-teaser.mp4`](public/media/kirby-teaser.mp4) is an 8-second recording of the hero.
 
 ## Stack
 
-Next.js 14 (App Router, static export), Tailwind CSS, framer-motion, and the Recursive variable font
-(its casual and mono axes cover headlines, body and code). No backend; everything runs client-side.
+Next.js 14 (App Router, static export), Tailwind CSS, framer-motion, Fredoka for display type and
+Recursive for body and code. Kirby art was generated with agy and chroma-keyed to transparent WebP. No backend; everything runs client-side.
 
 ## Development
 
@@ -36,8 +36,8 @@ Static export deployed to GitHub Pages (`gh-pages` branch):
 npm run deploy
 ```
 
-To roll back to an earlier deploy, push a tagged `gh-pages` commit back to the branch, for example:
+To roll back to an earlier deploy, push a tagged `gh-pages` commit back to the branch (`rollback/candy-gh-pages` is the original candy site, `rollback/pond-gh-pages` the frog version), for example:
 
 ```bash
-git push --force origin 'rollback/candy-gh-pages^{commit}:refs/heads/gh-pages'
+git push --force origin 'rollback/pond-gh-pages^{commit}:refs/heads/gh-pages'
 ```

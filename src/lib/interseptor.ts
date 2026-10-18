@@ -9,14 +9,14 @@ export const INTERSEPTOR = {
   install: "go install github.com/Veyal/interseptor/cmd/interseptor@latest",
 } as const;
 
-export type PondResponse = { status: string; ok: boolean; body: string; note: string };
+export type DemoResponse = { status: string; ok: boolean; body: string; note: string };
 
 /**
- * A request a fly carries through the pond. One value is editable in the
+ * A request floating through the home hero. One value is editable in the
  * intercept tray, and `respond` decides what the pretend server sends back,
  * so visitors can try a classic tamper without any network traffic.
  */
-export type PondRequest = {
+export type DemoRequest = {
   id: string;
   method: "GET" | "POST" | "PUT";
   /** Short label shown on the fly. */
@@ -24,10 +24,10 @@ export type PondRequest = {
   field: string;
   initial: string;
   lines: (value: string) => string[];
-  respond: (value: string) => PondResponse;
+  respond: (value: string) => DemoResponse;
 };
 
-export const POND_REQUESTS: PondRequest[] = [
+export const DEMO_REQUESTS: DemoRequest[] = [
   {
     id: "profile",
     method: "POST",
@@ -78,20 +78,20 @@ export const POND_REQUESTS: PondRequest[] = [
     label: "/api/cart",
     field: "price",
     initial: "19.99",
-    lines: (v) => ["PUT /api/cart HTTP/1.1", "Host: shop.example.com", "", `item=frog-plush&qty=1&price=${v}`],
+    lines: (v) => ["PUT /api/cart HTTP/1.1", "Host: shop.example.com", "", `item=star-plush&qty=1&price=${v}`],
     respond: (v) => {
       const price = Number.parseFloat(v);
       return Number.isFinite(price) && price < 19.99
         ? {
             status: "200 OK",
             ok: false,
-            body: `{"item":"frog-plush","total":${price}}`,
-            note: `The total came from the browser. You just bought a frog for ${price}.`,
+            body: `{"item":"star-plush","total":${price}}`,
+            note: `The total came from the browser. You just bought a star plush for ${price}.`,
           }
         : {
             status: "200 OK",
             ok: true,
-            body: '{"item":"frog-plush","total":19.99}',
+            body: '{"item":"star-plush","total":19.99}',
             note: "Full price. Lower the price and forward it again.",
           };
     },

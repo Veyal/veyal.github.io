@@ -20,7 +20,7 @@ export default function ToolsLayout({
       <Nav />
 
       {/* Tool switcher: scrolls sideways on narrow screens instead of hiding tools. */}
-      <div className="border-b border-[var(--pad-edge)] bg-[#e1eee7]">
+      <div className="bg-[var(--blush)]">
         <nav
           aria-label="Tools"
           className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3 sm:px-6"
@@ -34,7 +34,7 @@ export default function ToolsLayout({
                 aria-current={active ? "page" : undefined}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
                   active
-                    ? "bg-[var(--ink)] text-[var(--mist)]"
+                    ? "bg-[var(--ink)] text-white"
                     : "text-muted-foreground hover:bg-white hover:text-foreground"
                 }`}
               >
