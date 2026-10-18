@@ -3,13 +3,21 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { BookOpen, Download, Pause, Play } from "lucide-react";
-import { INTERSEPTOR, DEMO_REQUESTS, type DemoRequest, type DemoResponse } from "@/lib/interseptor";
+import {
+  INTERSEPTOR,
+  DEMO_REQUESTS,
+  type CopyAbility,
+  type DemoRequest,
+  type DemoResponse,
+} from "@/lib/interseptor";
 
 /**
  * Hero: requests float over Dream Land and Kirby inhales them. A caught
  * request stays in Kirby's cheeks and shows up in the intercept tray, where
  * the visitor can edit it, forward it (Kirby spits it out as a star) or drop
- * it (Kirby swallows it). The server is pretend and runs in the browser.
+ * it (Kirby swallows it). When a tampered request turns into a finding,
+ * Kirby copies its ability instead, the way he becomes what he eats. The
+ * server is pretend and runs in the browser.
  *
  * Requests are positioned by percentage so the static HTML is already a
  * complete, visible scene. A single rAF loop adds a drifting offset via
@@ -47,8 +55,21 @@ type Held = {
   response?: DemoResponse;
 };
 
-type Pose = "idle" | "inhale" | "full" | "spit";
-const POSES: Pose[] = ["idle", "inhale", "full", "spit"];
+type Pose = "idle" | "inhale" | "full" | "spit" | "sleep";
+const POSES: Pose[] = ["idle", "inhale", "full", "spit", "sleep"];
+
+/** Hat colour of each copy ability, used for its star and badge. */
+const ABILITY_COLOR: Record<CopyAbility["id"], string> = {
+  sword: "#4fae5a",
+  ninja: "#6b4fa0",
+  hammer: "#f08a3c",
+  spark: "#f2c200",
+  cutter: "#e0453a",
+  mirror: "#9b6ad6",
+  wing: "#e84a5f",
+};
+
+const STAR_PATH = "M12 1.8l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 16.7l-6.1 3.5 1.5-6.8L2.2 8.8l6.9-.7z";
 
 /** Where the open mouth sits inside the inhale artwork, as fractions of its box. */
 const MOUTH = { x: 0.62, y: 0.6 };
@@ -73,6 +94,7 @@ export function DreamHero() {
 
   const sceneRef = useRef<HTMLDivElement>(null);
   const kirbyRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const windRef = useRef<SVGGElement>(null);
   const flyRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const offsets = useRef(SLOTS.map(() => ({ x: 0, y: 0 })));
@@ -85,21 +107,51 @@ export function DreamHero() {
   const autoCaught = useRef(0);
   const trayRef = useRef<HTMLDivElement>(null);
   const poseTimer = useRef(0);
+  const abilityRef = useRef<CopyAbility | null>(null);
+  const abilityTimer = useRef(0);
 
   // Which request each slot carries, and whether it is showing.
   const [carried, setCarried] = useState(() => SLOTS.map((_, i) => i % DEMO_REQUESTS.length));
   const [visible, setVisible] = useState(() => SLOTS.map(() => true));
   const [held, setHeld] = useState<Held | null>(null);
   const [transient, setTransient] = useState<"inhale" | "spit" | null>(null);
-  const [squash, setSquash] = useState(false);
   const [spitKey, setSpitKey] = useState(0);
+  const [ability, setAbility] = useState<CopyAbility | null>(null);
+  const [burstKey, setBurstKey] = useState(0);
+  const [puffKey, setPuffKey] = useState(0);
+  const [lost, setLost] = useState<{ key: number; id: CopyAbility["id"] } | null>(null);
   const [paused, setPaused] = useState(false);
 
   heldRef.current = held;
   pausedRef.current = paused;
+  abilityRef.current = ability;
 
-  // Kirby keeps a held request in his cheeks until it is forwarded or dropped.
-  const pose: Pose = transient ?? (held?.phase === "held" ? "full" : "idle");
+  // Kirby keeps a held request in his cheeks until it is forwarded or dropped,
+  // keeps a copied ability until the next catch, and naps while paused.
+  const showAbility = !transient && held?.phase !== "held" && ability !== null;
+  const pose: Pose | null = showAbility
+    ? null
+    : (transient ?? (held?.phase === "held" ? "full" : paused ? "sleep" : "idle"));
+
+  // Fetch the ability art once the page is idle, so a transformation never waits on the network.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      DEMO_REQUESTS.forEach((r) => {
+        const img = new Image();
+        img.src = `/kirby/kirby-${r.ability.id}.webp`;
+      });
+    }, 2500);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  // Stop pending pose and ability swaps if the hero unmounts mid-animation.
+  useEffect(
+    () => () => {
+      window.clearTimeout(poseTimer.current);
+      window.clearTimeout(abilityTimer.current);
+    },
+    []
+  );
 
   // Drift loop.
   useEffect(() => {
@@ -141,9 +193,41 @@ export function DreamHero() {
     if (resetAfter) poseTimer.current = window.setTimeout(() => setTransient(null), resetAfter);
   };
 
-  const bump = () => {
-    setSquash(true);
-    window.setTimeout(() => setSquash(false), 220);
+  /** Play a keyframe animation on Kirby's body. Skipped when motion is reduced. */
+  const play = (frames: Keyframe[], duration: number) => {
+    if (reduceMotion) return;
+    bodyRef.current?.animate(frames, { duration, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" });
+  };
+  const bump = () =>
+    play([{ transform: "scale(1)" }, { transform: "scale(1.08, 0.92)" }, { transform: "scale(1)" }], 260);
+  const wobble = () =>
+    play(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(1.04, 0.96)" },
+        { transform: "scale(0.98, 1.02)" },
+        { transform: "scale(1)" },
+      ],
+      220
+    );
+  const spin = () =>
+    play(
+      [
+        { transform: "rotate(0deg) scale(1)" },
+        { transform: "rotate(180deg) scale(0.7)", offset: 0.45 },
+        { transform: "rotate(360deg) scale(1.12)", offset: 0.8 },
+        { transform: "rotate(360deg) scale(1)" },
+      ],
+      720
+    );
+
+  /** Knock the copied ability loose: its star bounces away, like getting hit in the games. */
+  const loseAbility = () => {
+    window.clearTimeout(abilityTimer.current);
+    const a = abilityRef.current;
+    if (!a) return;
+    if (!reduceMotion) setLost({ key: Date.now(), id: a.id });
+    setAbility(null);
   };
 
   /** Centre of a request's star, in scene coordinates. */
@@ -200,6 +284,7 @@ export function DreamHero() {
       if (!el || !target || !mouth) return;
       busy.current = true;
       caught.current[i] = true;
+      loseAbility();
 
       if (!reduceMotion) {
         showTransient("inhale");
@@ -226,6 +311,8 @@ export function DreamHero() {
 
       const request = DEMO_REQUESTS[carried[i]];
       setHeld({ request, value: request.initial, phase: "held" });
+      // Warm the art for the ability this request could give, before any forward.
+      new Image().src = `/kirby/kirby-${request.ability.id}.webp`;
       busy.current = false;
       // Focus follows a visitor's catch to the tray, where the next step is.
       if (fromUser) requestAnimationFrame(() => trayRef.current?.focus());
@@ -244,6 +331,8 @@ export function DreamHero() {
         setVisible((v) => v.map((x, j) => (j === i ? true : x)));
       }, 1800);
     },
+    // bump and loseAbility only touch refs and setters, so a fresh copy each render is fine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [carried, starPoint, mouthPoint, reduceMotion]
   );
 
@@ -281,8 +370,23 @@ export function DreamHero() {
 
   const forward = () => {
     touch();
-    setHeld((h) => (h ? { ...h, phase: "forwarded", response: h.request.respond(h.value) } : h));
-    if (!reduceMotion) {
+    const h = heldRef.current;
+    if (!h) return;
+    const response = h.request.respond(h.value);
+    setHeld({ ...h, phase: "forwarded", response });
+    if (!response.ok) {
+      // A finding: Kirby spins, bursts into stars and copies the ability.
+      if (reduceMotion) {
+        setAbility(h.request.ability);
+        return;
+      }
+      showTransient(null);
+      spin();
+      setBurstKey((k) => k + 1);
+      window.clearTimeout(abilityTimer.current);
+      abilityTimer.current = window.setTimeout(() => setAbility(h.request.ability), 320);
+    } else if (!reduceMotion) {
+      // Nothing interesting: he just spits the request on to the server.
       showTransient("spit", 700);
       setSpitKey((k) => k + 1);
     }
@@ -291,14 +395,17 @@ export function DreamHero() {
     touch();
     setHeld((h) => (h ? { ...h, phase: "dropped" } : h));
     bump();
+    if (!reduceMotion) setPuffKey((k) => k + 1);
   };
   const editAgain = () => {
     touch();
+    loseAbility();
     setHeld((h) => (h ? { ...h, phase: "held", response: undefined } : h));
     bump();
   };
   const release = () => {
     touch();
+    loseAbility();
     setHeld(null);
   };
 
@@ -405,24 +512,40 @@ export function DreamHero() {
             <div
               ref={kirbyRef}
               className="absolute bottom-0 left-[2%] z-10 aspect-square w-[128px] sm:w-[156px] lg:w-[176px]"
-              style={{
-                transform: squash ? "scale(1.07, 0.93)" : "scale(1)",
-                transformOrigin: "50% 100%",
-                transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              }}
             >
-              {POSES.map((p) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={p}
-                  src={`/kirby/kirby-${p}.webp`}
-                  alt=""
-                  width={640}
-                  height={640}
-                  className="absolute inset-0 h-full w-full object-contain object-bottom"
-                  style={{ opacity: pose === p ? 1 : 0 }}
-                />
-              ))}
+              <div ref={bodyRef} className="absolute inset-0" style={{ transformOrigin: "50% 70%" }}>
+                {POSES.map((p) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={p}
+                    src={`/kirby/kirby-${p}.webp`}
+                    alt=""
+                    width={640}
+                    height={640}
+                    className="absolute inset-0 h-full w-full object-contain object-bottom"
+                    style={{ opacity: pose === p ? 1 : 0 }}
+                  />
+                ))}
+                {ability && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/kirby/kirby-${ability.id}.webp`}
+                    alt=""
+                    width={640}
+                    height={640}
+                    className="absolute inset-0 h-full w-full object-contain object-bottom"
+                    style={{ opacity: showAbility ? 1 : 0 }}
+                  />
+                )}
+              </div>
+
+              <KirbyEffects
+                burstKey={burstKey}
+                puffKey={puffKey}
+                lost={lost}
+                ability={showAbility ? ability : null}
+                reduceMotion={!!reduceMotion}
+              />
             </div>
 
             {/* The star Kirby spits out when a request is forwarded */}
@@ -437,7 +560,7 @@ export function DreamHero() {
                 aria-hidden="true"
               >
                 <path
-                  d="M12 1.8l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 16.7l-6.1 3.5 1.5-6.8L2.2 8.8l6.9-.7z"
+                  d={STAR_PATH}
                   fill="var(--star)"
                   stroke="var(--ink)"
                   strokeWidth="1.6"
@@ -462,6 +585,7 @@ export function DreamHero() {
             reduceMotion={!!reduceMotion}
             onChange={(value) => {
               touch();
+              wobble();
               setHeld((h) => (h ? { ...h, value } : h));
             }}
             onForward={forward}
@@ -472,6 +596,100 @@ export function DreamHero() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * One-shot effects around Kirby: the star burst when he copies an ability,
+ * the badge naming it, the ability star bouncing away when he loses it, and
+ * the puff when he swallows a dropped request. Each replays when its key changes.
+ */
+function KirbyEffects({
+  burstKey,
+  puffKey,
+  lost,
+  ability,
+  reduceMotion,
+}: {
+  reduceMotion: boolean;
+  burstKey: number;
+  puffKey: number;
+  lost: { key: number; id: CopyAbility["id"] } | null;
+  ability: CopyAbility | null;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      {burstKey > 0 && (
+        <div key={`burst-${burstKey}`} className="absolute left-1/2 top-[55%]">
+          {Array.from({ length: 8 }).map((_, k) => {
+            const angle = (k / 8) * Math.PI * 2;
+            return (
+              <motion.svg
+                key={k}
+                viewBox="0 0 24 24"
+                className="absolute -ml-2.5 -mt-2.5 h-5 w-5"
+                initial={{ x: 0, y: 0, scale: 0.4, opacity: 1, rotate: 0 }}
+                animate={{
+                  x: Math.cos(angle) * 96,
+                  y: Math.sin(angle) * 86,
+                  scale: [0.4, 1.1, 0.6],
+                  opacity: [1, 1, 0],
+                  rotate: 200,
+                }}
+                transition={{ duration: 0.75, ease: "easeOut", delay: 0.25 }}
+              >
+                <path d={STAR_PATH} fill="var(--star)" stroke="var(--ink)" strokeWidth="1.6" strokeLinejoin="round" />
+              </motion.svg>
+            );
+          })}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {ability && (
+          <motion.div
+            key={ability.id}
+            className="absolute -top-7 left-1/2 whitespace-nowrap"
+            initial={{ x: "-50%", y: 8, scale: 0.6, opacity: 0 }}
+            animate={{ x: "-50%", y: 0, scale: 1, opacity: 1 }}
+            exit={{ x: "-50%", y: -6, opacity: 0, transition: { duration: 0.15 } }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 18 }}
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-semibold text-foreground shadow-[0_2px_0_rgba(42,33,64,0.12)]">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: ABILITY_COLOR[ability.id] }} />
+              {ability.name}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {lost && (
+        <motion.svg
+          key={`lost-${lost.key}`}
+          viewBox="0 0 24 24"
+          className="absolute left-[45%] top-[30%] h-8 w-8"
+          initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+          animate={{ x: [0, 50, 95, 130], y: [0, -60, 10, -18], rotate: 540, opacity: [1, 1, 1, 0] }}
+          transition={{ duration: 0.9, ease: "easeOut", times: [0, 0.35, 0.7, 1] }}
+        >
+          <path d={STAR_PATH} fill={ABILITY_COLOR[lost.id]} stroke="var(--ink)" strokeWidth="1.6" strokeLinejoin="round" />
+        </motion.svg>
+      )}
+
+      {puffKey > 0 && (
+        <div key={`puff-${puffKey}`} className="absolute left-[62%] top-[48%]">
+          {[0, 1, 2].map((k) => (
+            <motion.span
+              key={k}
+              className="absolute -ml-2 -mt-2 block h-4 w-4 rounded-full bg-white"
+              initial={{ x: 0, y: 0, scale: 0.3, opacity: 0.95 }}
+              animate={{ x: 18 + k * 12, y: -24 - k * 14, scale: 1.4 - k * 0.2, opacity: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: k * 0.08 }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -619,6 +837,22 @@ const InterceptTray = forwardRef<HTMLDivElement, InterceptTrayProps>(function In
               <p role="status" className="mt-3">
                 {held.response.note}
               </p>
+              {!held.response.ok && (
+                <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/kirby/kirby-${held.request.ability.id}.webp`}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 object-contain"
+                  />
+                  <span>
+                    Kirby copied <strong className="text-foreground">{held.request.ability.name}</strong>.{" "}
+                    {held.request.ability.why}
+                  </span>
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={onEditAgain} className="btn-ghost">
                   Edit and resend

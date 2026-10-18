@@ -4,10 +4,11 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Github, Pause, Play } from "lucide-react";
 import { CopyLine } from "@/components/dreamland/CopyLine";
+import { FeatureVignette, type VignetteId } from "@/components/dreamland/FeatureVignette";
 import { INTERSEPTOR } from "@/lib/interseptor";
 
 type Capability = {
-  id: string;
+  id: VignetteId;
   name: string;
   body: string;
   /** Real product screenshot, or null for the agent transcript panel. */
@@ -280,7 +281,10 @@ function Workbench() {
             exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, scale: 0.985 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <p className="max-w-[40rem] text-lg leading-relaxed text-[var(--moon)]">{cap.body}</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+              <FeatureVignette id={cap.id} />
+              <p className="max-w-[34rem] text-lg leading-relaxed text-[var(--moon)]">{cap.body}</p>
+            </div>
             <div className="mt-5 overflow-hidden rounded-[1.25rem] border border-[rgba(244,240,255,0.14)] bg-[var(--night-2)]">
               {cap.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -313,11 +317,27 @@ function AgentPanel() {
     { who: "agent", text: "create_finding \"Order API returns other customers' orders\"" },
     { who: "agent", text: "add_finding_poc baseline, action, result → ready for review" },
   ];
+  // Lines appear one at a time, as if the agent were working through them.
+  const reduce = useReducedMotion();
+  const [shown, setShown] = useState(lines.length);
+  useEffect(() => {
+    if (reduce) {
+      setShown(lines.length);
+      return;
+    }
+    setShown(1);
+    const id = window.setInterval(() => setShown((n) => (n >= lines.length + 2 ? 1 : n + 1)), 900);
+    return () => window.clearInterval(id);
+  }, [reduce, lines.length]);
   return (
-    <div className="grid aspect-[16/10] w-full grid-cols-1 content-center gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_9rem] sm:p-8">
-      <ol className="space-y-3 font-mono text-[0.82rem] leading-relaxed sm:text-[0.9rem]">
+    <div className="flex aspect-[16/10] w-full items-center p-5 sm:p-8">
+      <ol className="w-full space-y-3 font-mono text-[0.82rem] leading-relaxed sm:text-[0.9rem]">
         {lines.map((l, i) => (
-          <li key={i} className="flex gap-3">
+          <li
+            key={i}
+            className="flex gap-3 transition-opacity duration-300"
+            style={{ opacity: i < shown ? 1 : 0.12 }}
+          >
             <span className={l.who === "you" ? "text-[var(--star)]" : "text-[var(--sky)]"}>
               {l.who}
             </span>
@@ -325,14 +345,6 @@ function AgentPanel() {
           </li>
         ))}
       </ol>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/kirby/kirby-laptop.webp"
-        alt=""
-        width={144}
-        height={144}
-        className="hidden h-36 w-36 sm:block"
-      />
     </div>
   );
 }

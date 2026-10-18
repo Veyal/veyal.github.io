@@ -12,6 +12,18 @@ export const INTERSEPTOR = {
 export type DemoResponse = { status: string; ok: boolean; body: string; note: string };
 
 /**
+ * The copy ability Kirby gains when a tampered request turns into a finding.
+ * Each one is picked to match the bug, the way Kirby becomes what he eats.
+ */
+export type CopyAbility = {
+  /** Art in public/kirby/kirby-<id>.webp */
+  id: "sword" | "ninja" | "hammer" | "spark" | "cutter" | "mirror" | "wing";
+  name: string;
+  /** Why this ability fits the finding, in one short sentence. */
+  why: string;
+};
+
+/**
  * A request floating through the home hero. One value is editable in the
  * intercept tray, and `respond` decides what the pretend server sends back,
  * so visitors can try a classic tamper without any network traffic.
@@ -25,11 +37,13 @@ export type DemoRequest = {
   initial: string;
   lines: (value: string) => string[];
   respond: (value: string) => DemoResponse;
+  ability: CopyAbility;
 };
 
 export const DEMO_REQUESTS: DemoRequest[] = [
   {
     id: "profile",
+    ability: { id: "sword", name: "Sword", why: "Promoted himself to admin and drew a sword." },
     method: "POST",
     label: "/api/profile",
     field: "role",
@@ -52,6 +66,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "orders",
+    ability: { id: "ninja", name: "Ninja", why: "Slipped quietly into someone else's order." },
     method: "GET",
     label: "/api/orders/1042",
     field: "order id",
@@ -74,6 +89,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "cart",
+    ability: { id: "hammer", name: "Hammer", why: "Smashed the price down to whatever he liked." },
     method: "PUT",
     label: "/api/cart",
     field: "price",
@@ -98,6 +114,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "debug",
+    ability: { id: "spark", name: "Spark", why: "Shorted the server until it spilled a stack trace." },
     method: "GET",
     label: "/api/admin/stats",
     field: "debug",
@@ -120,6 +137,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "login",
+    ability: { id: "cutter", name: "Cutter", why: "One quote cut the query clean in half." },
     method: "POST",
     label: "/api/login",
     field: "user",
@@ -142,6 +160,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "user",
+    ability: { id: "mirror", name: "Mirror", why: "Saw another user's profile reflected back." },
     method: "GET",
     label: "/api/users/42",
     field: "user id",
@@ -164,6 +183,7 @@ export const DEMO_REQUESTS: DemoRequest[] = [
   },
   {
     id: "redirect",
+    ability: { id: "wing", name: "Wing", why: "Flew visitors off to any site he chose." },
     method: "GET",
     label: "/login?next=/home",
     field: "next",

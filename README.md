@@ -5,7 +5,8 @@ Portfolio of [@Veyal](https://github.com/Veyal), penetration tester and maker of
 
 The home page leads with Interseptor: Kirby inhales floating HTTP requests, and visitors can edit
 the caught request, then forward it (Kirby spits it out as a star) or drop it (he swallows it),
-against a pretend server running in the browser. Below it are the real product tour, screenshots, certifications and a set
+against a pretend server running in the browser. When a tampered request turns into a finding, Kirby copies
+a matching ability (IDOR makes him Ninja, privilege escalation Sword, price tampering Hammer, and so on). Below it are the real product tour, screenshots, certifications and a set
 of free client-side tools:
 
 - **Encryptor**: encrypt and decrypt text in the browser
@@ -14,7 +15,7 @@ of free client-side tools:
 - **AES Mode Detector**: spot ECB vs CBC from ciphertext patterns
 - **Bill Splitter**: AI receipt reading and fair bill splitting
 
-[`public/media/kirby-teaser.mp4`](public/media/kirby-teaser.mp4) is an 8-second recording of the hero.
+[`public/media/kirby-teaser.mp4`](public/media/kirby-teaser.mp4) is a short recording of the hero, including a copy-ability transformation.
 
 ## Stack
 
